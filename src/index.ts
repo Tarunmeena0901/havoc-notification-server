@@ -10,14 +10,14 @@ const connectedUsers: {
         userName: string,
         userAddress: string
     }
-} = {} ;
+} = {};
 
 wss.on('connection', function connection(userSocket) {
     userSocket.on('error', console.error);
 
+    const id = randomId();
     userSocket.on('message', function message(data: string) {
         const parsedData = JSON.parse(data);
-        const id = randomId();
         connectedUsers[id] = {
             ws: userSocket,
             userName: '',
@@ -37,34 +37,49 @@ wss.on('connection', function connection(userSocket) {
                 connectedUsers[id].userName = parsedData.userName;
                 connectedUsers[id].userAddress = parsedData.IpAddress;
                 userSocket.send(`${parsedData.userName} joined`);
+                broadcast(`${parsedData.userName} is now online`, parsedData.userName);
             }
         }
 
         if (parsedData.type == "CONNECTION_REQUEST") {
             const to = parsedData.to;
             const from = parsedData.from;
-            let userFound = false;
+            let userOnline = false;
             Object.keys(connectedUsers).forEach((id) => {
                 const { ws, userName, userAddress } = connectedUsers[id];
                 if (userName == to) {
-                    userFound = true;
+                    userOnline = true;
                     ws.send(JSON.stringify({
                         from: from,
                         message: `${from} sent you a connection request, connection Id: ${userAddress}`,
                         senderAddress: userAddress
                     }));
-                    userSocket.send(`connection request sent to ${to}`)
+                    userSocket.send(`connection request sent to ${to}`);
                 }
             })
-            if (!userFound) {
-                userSocket.send(`No user with username ${to} exist`);
+
+            if (!userOnline) {
+                userSocket.send(`player ${to} is offline`);
             }
         }
     })
 
     userSocket.send("you are connected to notification server please subscribe");
+
+    userSocket.on('close', (userSocket: WebSocket) => {
+        delete connectedUsers[id];
+        userSocket.send("notification service is disconnected");
+    })
 })
 
 function randomId() {
     return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+}
+
+function broadcast(message: string, broadcaster: string) {
+    Object.values(connectedUsers).forEach(({ ws, userName }) => {
+        if (ws.readyState == WebSocket.OPEN && userName == broadcaster) {
+            ws.send(message);
+        }
+    });
 }
