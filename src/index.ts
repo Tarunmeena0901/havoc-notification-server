@@ -36,7 +36,6 @@ wss.on('connection', function connection(userSocket) {
                 players.push(parsedData.userName);
                 connectedUsers[id].userName = parsedData.userName;
                 connectedUsers[id].userAddress = parsedData.IpAddress;
-                userSocket.send(`${parsedData.userName} joined`);
                 broadcast(`${parsedData.userName} is now online`, parsedData.userName);
             }
         }
