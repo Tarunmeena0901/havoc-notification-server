@@ -66,7 +66,7 @@ wss.on('connection', function connection(userSocket) {
 
     userSocket.send("you are connected to notification server please subscribe");
 
-    userSocket.on('close', (userSocket: WebSocket) => {
+    userSocket.on('close', () => {
         delete connectedUsers[id];
         userSocket.send("notification service is disconnected");
     })
