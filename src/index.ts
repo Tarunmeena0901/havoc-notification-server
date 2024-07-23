@@ -35,11 +35,11 @@ wss.on('connection', function connection(userSocket) {
                 players.push(parsedData.username);
                 connectedUsers[id].username = parsedData.username;
                 const player_data = {
-                    id, 
-                    username:parsedData.username
+                    id,
+                    username: parsedData.username
                 }
                 const isStoredInDatabase = await findPlayerById(parsedData.username);
-                if(!isStoredInDatabase){
+                if (!isStoredInDatabase) {
                     await addUser(player_data);
                 }
                 broadcast(`${parsedData.username} is now online`, parsedData.username);
@@ -74,12 +74,14 @@ wss.on('connection', function connection(userSocket) {
 
     userSocket.on('close', () => {
         try {
-            if(Object.keys(connectedUsers).length >  0){
-            const playerName = connectedUsers[id].username;
-            delete connectedUsers[id];
-            removePlayerOnDisconnect(playerName);
-            broadcast(`${playerName} is now offline`, playerName );
-        }
+            if (Object.keys(connectedUsers).length > 0) {
+                const playerName = connectedUsers[id].username;
+                if (playerName) {
+                    delete connectedUsers[id];
+                    removePlayerOnDisconnect(playerName);
+                    broadcast(`${playerName} is now offline`, playerName);
+                }
+            }
         } catch (error) {
             console.log(error);
         }
@@ -100,7 +102,7 @@ function broadcast(message: string, broadcaster: string) {
 
 function removePlayerOnDisconnect(username: string) {
     const index = players.indexOf(username);
-    if(index != -1){
+    if (index != -1) {
         players.splice(index, 1);
     }
 }
