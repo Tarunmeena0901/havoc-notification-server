@@ -1,5 +1,4 @@
 import { WebSocket, WebSocketServer } from "ws";
-import sql from "./sql/database";
 import { addUser, findPlayerById } from "./sql/sql_function";
 
 const wss = new WebSocketServer({ port: 8080 });
@@ -44,7 +43,6 @@ wss.on('connection', function connection(userSocket) {
                 }
                 addUser(player_data);
                 broadcast(`${parsedData.userName} is now online`, parsedData.userName);
-                console.log(connectedUsers);
             }
         }
 
@@ -58,7 +56,7 @@ wss.on('connection', function connection(userSocket) {
                     userOnline = true;
                     ws.send(JSON.stringify({
                         from: from,
-                        message: `${from} sent you a connection request, connection Id: ${userAddress}`,
+                        message: `${from} sent you a connection request, connection address: ${userAddress}`,
                         senderAddress: userAddress
                     }));
                     userSocket.send(`connection request sent to ${to}`);
