@@ -16,7 +16,7 @@ wss.on('connection', function connection(userSocket) {
     userSocket.on('error', console.error);
 
     const id = randomId();
-    userSocket.on('message', function message(data: string) {
+    userSocket.on('message', async function message(data: string) {
         const parsedData = JSON.parse(data);
         connectedUsers[id] = {
             ws: userSocket,
@@ -38,7 +38,10 @@ wss.on('connection', function connection(userSocket) {
                     id, 
                     username:parsedData.userName
                 }
-                addUser(player_data);
+                const isStoredInDatabaseawait = await findPlayerById(id);
+                if(!isStoredInDatabaseawait){
+                    addUser(player_data);
+                }
                 broadcast(`${parsedData.userName} is now online`, parsedData.userName);
             }
         }
