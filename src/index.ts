@@ -1,4 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
+import sql from "./sql/database";
+import { addUser, findPlayerById } from "./sql/sql_function";
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -28,15 +30,21 @@ wss.on('connection', function connection(userSocket) {
             let duplicateUserNameExist = false
             players.forEach((existingUsername) => {
                 if (parsedData.userName == existingUsername) {
-                    userSocket.send("Username already exist please choose a different username")
+                    userSocket.send("you are already subscribed")
                     duplicateUserNameExist = true;
                 }
             })
             if (!duplicateUserNameExist) {
                 players.push(parsedData.userName);
                 connectedUsers[id].userName = parsedData.userName;
-                connectedUsers[id].userAddress = parsedData.IpAddress;
+                connectedUsers[id].userAddress = parsedData.ipAddress;
+                const player_data = {
+                    id, 
+                    username:parsedData.userName
+                }
+                addUser(player_data);
                 broadcast(`${parsedData.userName} is now online`, parsedData.userName);
+                console.log(connectedUsers);
             }
         }
 
@@ -77,7 +85,7 @@ function randomId() {
 
 function broadcast(message: string, broadcaster: string) {
     Object.values(connectedUsers).forEach(({ ws, userName }) => {
-        if (ws.readyState == WebSocket.OPEN && userName == broadcaster) {
+        if (ws.readyState == WebSocket.OPEN && userName != broadcaster) {
             ws.send(message);
         }
     });
