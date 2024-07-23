@@ -8,8 +8,7 @@ const players: string[] = [];
 const connectedUsers: {
     [key: string]: {
         ws: WebSocket,
-        userName: string,
-        userAddress: string
+        userName: string
     }
 } = {};
 
@@ -21,8 +20,7 @@ wss.on('connection', function connection(userSocket) {
         const parsedData = JSON.parse(data);
         connectedUsers[id] = {
             ws: userSocket,
-            userName: '',
-            userAddress: ''
+            userName: ''
         };
 
         if (parsedData.type == "SUBSCRIBE") {
@@ -36,7 +34,6 @@ wss.on('connection', function connection(userSocket) {
             if (!duplicateUserNameExist) {
                 players.push(parsedData.userName);
                 connectedUsers[id].userName = parsedData.userName;
-                connectedUsers[id].userAddress = parsedData.ipAddress;
                 const player_data = {
                     id, 
                     username:parsedData.userName
@@ -46,20 +43,21 @@ wss.on('connection', function connection(userSocket) {
             }
         }
 
-        if (parsedData.type == "CONNECTION_REQUEST") {
+        if (parsedData.type == "MESSAGE") {
             const to = parsedData.to;
             const from = parsedData.from;
+            const message = parsedData.message;
             let userOnline = false;
             Object.keys(connectedUsers).forEach((id) => {
-                const { ws, userName, userAddress } = connectedUsers[id];
+                const { ws, userName } = connectedUsers[id];
                 if (userName == to) {
                     userOnline = true;
                     ws.send(JSON.stringify({
                         from: from,
-                        message: `${from} sent you a connection request, connection address: ${userAddress}`,
-                        senderAddress: userAddress
+                        messageNotification: `${from} sent you a message`,
+                        message: message
                     }));
-                    userSocket.send(`connection request sent to ${to}`);
+                    userSocket.send(`message sent to ${to}`);
                 }
             })
 
@@ -72,8 +70,9 @@ wss.on('connection', function connection(userSocket) {
     userSocket.send("you are connected to notification server please subscribe");
 
     userSocket.on('close', () => {
+        const playerName = connectedUsers[id].userName;
         delete connectedUsers[id];
-        userSocket.send("notification service is disconnected");
+        broadcast(`${playerName} is now offline`, playerName );
     })
 })
 
