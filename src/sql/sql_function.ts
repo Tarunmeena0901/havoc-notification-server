@@ -22,19 +22,17 @@ export async function deleteUser(id: string){
     }
 }
 
-export async function findPlayerById(playerId : string) {
+export async function findPlayerById(username : string) {
     try {
       const result = await sql`
         SELECT * FROM player_data
-        WHERE id = ${playerId};
+        WHERE username = ${username};
       `;
-  
       if (result.length === 0) {
-        console.log(`Player with ID ${playerId} not found.`);
         return false;
       }
   
-      return true; // Assuming ID is unique and returns only one row
+      return true;
     } catch (error) {
       console.error('Error fetching player by ID:', error);
       return false;

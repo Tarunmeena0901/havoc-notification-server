@@ -8,7 +8,7 @@ const players: string[] = [];
 const connectedUsers: {
     [key: string]: {
         ws: WebSocket,
-        userName: string
+        username: string
     }
 } = {};
 
@@ -20,29 +20,29 @@ wss.on('connection', function connection(userSocket) {
         const parsedData = JSON.parse(data);
         connectedUsers[id] = {
             ws: userSocket,
-            userName: ''
+            username: ''
         };
 
         if (parsedData.type == "SUBSCRIBE") {
             let duplicateUserNameExist = false
             players.forEach((existingUsername) => {
-                if (parsedData.userName == existingUsername) {
+                if (parsedData.username == existingUsername) {
                     userSocket.send("you are already subscribed")
                     duplicateUserNameExist = true;
                 }
             })
             if (!duplicateUserNameExist) {
-                players.push(parsedData.userName);
-                connectedUsers[id].userName = parsedData.userName;
+                players.push(parsedData.username);
+                connectedUsers[id].username = parsedData.username;
                 const player_data = {
                     id, 
-                    username:parsedData.userName
+                    username:parsedData.username
                 }
-                const isStoredInDatabaseawait = await findPlayerById(id);
-                if(!isStoredInDatabaseawait){
-                    addUser(player_data);
+                const isStoredInDatabase = await findPlayerById(parsedData.username);
+                if(!isStoredInDatabase){
+                    await addUser(player_data);
                 }
-                broadcast(`${parsedData.userName} is now online`, parsedData.userName);
+                broadcast(`${parsedData.username} is now online`, parsedData.username);
             }
         }
 
@@ -52,8 +52,8 @@ wss.on('connection', function connection(userSocket) {
             const message = parsedData.message;
             let userOnline = false;
             Object.keys(connectedUsers).forEach((id) => {
-                const { ws, userName } = connectedUsers[id];
-                if (userName == to) {
+                const { ws, username } = connectedUsers[id];
+                if (username == to) {
                     userOnline = true;
                     ws.send(JSON.stringify({
                         from: from,
@@ -73,7 +73,7 @@ wss.on('connection', function connection(userSocket) {
     userSocket.send("you are connected to notification server please subscribe");
 
     userSocket.on('close', () => {
-        const playerName = connectedUsers[id].userName;
+        const playerName = connectedUsers[id].username;
         delete connectedUsers[id];
         removePlayerOnDisconnect(playerName);
         broadcast(`${playerName} is now offline`, playerName );
@@ -85,8 +85,8 @@ function randomId() {
 }
 
 function broadcast(message: string, broadcaster: string) {
-    Object.values(connectedUsers).forEach(({ ws, userName }) => {
-        if (ws.readyState == WebSocket.OPEN && userName != broadcaster) {
+    Object.values(connectedUsers).forEach(({ ws, username }) => {
+        if (ws.readyState == WebSocket.OPEN && username != broadcaster) {
             ws.send(message);
         }
     });
