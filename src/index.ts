@@ -72,6 +72,7 @@ wss.on('connection', function connection(userSocket) {
     userSocket.on('close', () => {
         const playerName = connectedUsers[id].userName;
         delete connectedUsers[id];
+        removePlayerOnDisconnect(playerName);
         broadcast(`${playerName} is now offline`, playerName );
     })
 })
@@ -86,4 +87,11 @@ function broadcast(message: string, broadcaster: string) {
             ws.send(message);
         }
     });
+}
+
+function removePlayerOnDisconnect(username: string) {
+    const index = players.indexOf(username);
+    if(index != -1){
+        players.splice(index, 1);
+    }
 }
