@@ -74,12 +74,12 @@ wss.on('connection', function connection(userSocket) {
 
     userSocket.on('close', () => {
         try {
-            console.log(connectedUsers);
+            console.log(JSON.stringify(connectedUsers,null,2));
             if (Object.keys(connectedUsers).length > 0) {
                 if (connectedUsers[id] && connectedUsers[id].username) {
                     const playerName = connectedUsers[id].username;
                     delete connectedUsers[id];
-                    console.log(connectedUsers);
+                    console.log(JSON.stringify(connectedUsers,null,2));
                     removePlayerOnDisconnect(playerName);
                     broadcast(`${playerName} is now offline`, playerName);
                 }
