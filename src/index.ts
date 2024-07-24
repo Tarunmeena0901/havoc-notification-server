@@ -69,7 +69,6 @@ wss.on('connection', function connection(userSocket) {
             }
         }
     })
-    console.log(JSON.stringify(connectedUsers,null,2));
     userSocket.send("you are connected to notification server please subscribe");
 
     userSocket.on('close', () => {
@@ -78,7 +77,6 @@ wss.on('connection', function connection(userSocket) {
                 if (connectedUsers[id] && connectedUsers[id].username) {
                     const playerName = connectedUsers[id].username;
                     delete connectedUsers[id];
-                    console.log(JSON.stringify(connectedUsers,null,2));
                     removePlayerOnDisconnect(playerName);
                     broadcast(`${playerName} is now offline`, playerName);
                 }
