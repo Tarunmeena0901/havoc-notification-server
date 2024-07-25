@@ -56,6 +56,7 @@ wss.on('connection', function connection(userSocket) {
                 if (username == to) {
                     userOnline = true;
                     ws.send(JSON.stringify({
+                        type: "MESSAGE",
                         from: from,
                         messageNotification: `${from} sent you a message`,
                         message: message
