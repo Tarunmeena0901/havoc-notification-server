@@ -59,7 +59,7 @@ wss.on('connection', function connection(userSocket) {
                         from: from,
                         messageNotification: `${from} sent you a message`,
                         message: message
-                    }));
+                    },null,2));
                     userSocket.send(`message sent to ${to}`);
                 }
             })
