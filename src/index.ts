@@ -232,8 +232,9 @@ function removePlayerFromLobby(username: string, lobbyId: string, leaderNewLobby
                     leader: "",
                     players: new Set(),
                 };
-                lobbies[newLobbyId].leader == username;
-                lobbies[newLobbyId].players.add(username);
+                lobbies[newLobbyId].leader = playerUsername;
+                lobbies[newLobbyId].players.add(playerUsername);
+                lobbies[lobbyId].players.delete(playerUsername);
                 Object.keys(connectedUsers).forEach((id) => {
                     const { username } = connectedUsers[id];
                     if (playerUsername == username) {
