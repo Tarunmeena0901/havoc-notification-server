@@ -20,6 +20,13 @@ const lobbies: {
     }
 } = {};
 
+const serializedLobbies : {
+    [key: string]: {
+        leader: string,
+        players: string[]
+    }
+} = {};
+
 //incase the server crash this fill bring all the lobbies and back
 rebuildLobbies(lobbies);
 
@@ -144,7 +151,7 @@ wss.on('connection', function connection(userSocket) {
                         lobbies[joiningLobbyId].players.add(accepter);
                         addPlayerToLobby(joiningLobbyId, accepter);
                         broadcastInLobby(JSON.stringify({
-                            currentLobbyStatus: lobbies[joiningLobbyId],
+                            currentLobbyStatus: {leader: lobbies[joiningLobbyId].leader, players: Array.from(lobbies[joiningLobbyId].players)},
                             message:`${accepter} joined the lobby`
                         },null,2), joiningLobbyId, accepter);
                         userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
@@ -177,13 +184,15 @@ wss.on('connection', function connection(userSocket) {
                     removePlayerFromDatabaseLobby(currentLobbyId, deserter);
                     if (deserter != lobbyLeader) {
                         connectedUsers[id].lobby = lobbyId;
-                        lobbies[lobbyId].leader = deserter;
+                        lobbies[lobbyId] = {
+                            leader: deserter,
+                            players: new Set<string>([deserter])
+                        }
                         changeLobbyLeader(lobbyId,deserter);
-                        lobbies[lobbyId].players.add(deserter);
                         addPlayerToLobby(lobbyId, deserter);
                     }
                     broadcastInLobby(JSON.stringify({
-                        currentLobbyStatus: lobbies[currentLobbyId],
+                        currentLobbyStatus: {leader: lobbies[currentLobbyId].leader, players: Array.from(lobbies[currentLobbyId].players)},
                         message:`${deserter} left the lobby`
                     },null,2), currentLobbyId, deserter);
                     ws.send(`You left ${lobbyLeader}'s lobby`);
@@ -191,14 +200,23 @@ wss.on('connection', function connection(userSocket) {
             })
         }
 
-        if (parsedData.type == "RETRIEVE_LOBBY"){
-            const all: boolean = parsedData.all || false;
-            const one: boolean = parsedData.one || false;
+        if (parsedData.type == "RETRIEVE_LOBBY") {
+            const all = parsedData.all || false;
+            const one = parsedData.one || false;
             const lobbyId = parsedData.lobbyId;
-            if(all){
-                userSocket.send(JSON.stringify(lobbies,null,2));
-            } else if(lobbyId && one){
-                userSocket.send(JSON.stringify(lobbies[id],null,2));
+            if (all) {
+                userSocket.send(JSON.stringify(serializeLobbies(lobbies), null, 2));
+            } else if (lobbyId && one) {
+                const lobby = lobbies[lobbyId];
+                if (lobby) {
+                    const serializedLobby = {
+                        leader: lobby.leader,
+                        players: Array.from(lobby.players)
+                    };
+                    userSocket.send(JSON.stringify(serializedLobby, null, 2));
+                } else {
+                    userSocket.send(JSON.stringify({ error: "Lobby not found" }));
+                }
             }
         }
         console.log(lobbies);
@@ -252,6 +270,16 @@ function removePlayerOnDisconnect(username: string) {
     }
 }
 
+function serializeLobbies(lobbies: any) {
+    for (const lobbyId in lobbies) {
+        serializedLobbies[lobbyId] = {
+            leader: lobbies[lobbyId].leader,
+            players: Array.from(lobbies[lobbyId].players)
+        };
+    }
+    return serializedLobbies;
+}
+
 
 // if leader leaves this function reassign every other lobby member a new lobby 
 async function removePlayerFromLobby(username: string, lobbyId: string, leaderNewLobby?: string) {
@@ -260,22 +288,18 @@ async function removePlayerFromLobby(username: string, lobbyId: string, leaderNe
             if (playerUsername != lobbies[lobbyId].leader) {
                 const newLobbyId = randomId();
                 lobbies[newLobbyId] = {
-                    leader: "",
-                    players: new Set(),
+                    leader: playerUsername,
+                    players: new Set<string>().add(playerUsername),
                 };
-                await addLobby(newLobbyId, "", new Set<string>())
-                lobbies[newLobbyId].leader = playerUsername;
-                await changeLobbyLeader(newLobbyId, playerUsername);
-                lobbies[newLobbyId].players.add(playerUsername);
-                await addPlayerToLobby(newLobbyId, playerUsername);
                 lobbies[lobbyId].players.delete(playerUsername);
-                await removePlayerFromDatabaseLobby(lobbyId,playerUsername);
                 Object.keys(connectedUsers).forEach((id) => {
                     const { username } = connectedUsers[id];
                     if (playerUsername == username) {
                         connectedUsers[id].lobby = newLobbyId;
                     }
                 })
+                await addLobby(newLobbyId, playerUsername, new Set<string>([playerUsername]))
+                await removePlayerFromDatabaseLobby(lobbyId,playerUsername);
             }
         })
         if (leaderNewLobby) {
