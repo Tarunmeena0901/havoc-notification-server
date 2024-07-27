@@ -1,5 +1,5 @@
 import { WebSocket, WebSocketServer } from "ws";
-import { addLobby, addPlayerToLobby, addUser, changeLobbyLeader, deleteLobby, findPlayerById, removePlayerFromDatabaseLobby } from "./sql/sql_function";
+import { addLobby, addPlayerToLobby, addUser, changeLobbyLeader, deleteLobby, findPlayerById, rebuildLobbies, removePlayerFromDatabaseLobby } from "./sql/sql_function";
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -19,6 +19,9 @@ const lobbies: {
         players: Set<string>
     }
 } = {};
+
+//incase the server crash this fill bring all the lobbies and back
+rebuildLobbies(lobbies);
 
 wss.on('connection', function connection(userSocket) {
     userSocket.on('error', console.error);

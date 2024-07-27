@@ -91,13 +91,19 @@ export async function rebuildLobbies(
       leader: string,
       players: Set<string>
     }
-  }){
-    const rows: {id:string, leader:string, players: string[]}[] = await sql`SELECT * FROM lobbies `;
-
+  }) {
+    try {
+      const rows: { id: string, leader: string, players: string[] }[] = await sql`SELECT * FROM lobbies `;
+  if (rows.length > 0) {  
     rows.forEach((lobbyData) => {
       lobbies[lobbyData.id] = {
         leader: lobbyData.leader,
         players: new Set<string>(lobbyData.players)
       }
     })
+  }
+    } catch (error) {
+      console.log("something bad happened while rebuilding the lobbies: \n", error);
+    }
+  
 }
