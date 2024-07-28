@@ -1,5 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { addLobby, addPlayerToLobby, addUser, changeLobbyLeader, deleteLobby, findPlayerById, rebuildLobbies, removePlayerFromDatabaseLobby } from "./sql/sql_function";
+import { twoWayAddFriend } from "./playFab/playfab_function";
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -28,7 +29,7 @@ const serializedLobbies : {
 } = {};
 
 //incase the server crash this fill bring all the lobbies and back
-rebuildLobbies(lobbies);
+//rebuildLobbies(lobbies);
 
 wss.on('connection', function connection(userSocket) {
     userSocket.on('error', console.error);
@@ -45,7 +46,7 @@ wss.on('connection', function connection(userSocket) {
         leader: "",
         players: new Set<string>()
     }
-    addLobby(lobbyId,"", new Set<string>());
+   //addLobby(lobbyId,"", new Set<string>());
 
     userSocket.on('message', async function message(data: string) {
         const parsedData = JSON.parse(data);
@@ -63,9 +64,9 @@ wss.on('connection', function connection(userSocket) {
                 connectedUsers[id].username = parsedData.username;
 
                 lobbies[lobbyId].leader = parsedData.username;
-                changeLobbyLeader(lobbyId, parsedData.username)
+                //changeLobbyLeader(lobbyId, parsedData.username)
                 lobbies[lobbyId].players.add(parsedData.username);
-                addPlayerToLobby(lobbyId, parsedData.username );
+                //addPlayerToLobby(lobbyId, parsedData.username );
 
                 const player_data = {
                     id,
@@ -149,7 +150,7 @@ wss.on('connection', function connection(userSocket) {
                         lobbies[accepterCurrentLobbyId].leader == accepter ? removePlayerFromLobby(accepter, accepterCurrentLobbyId, joiningLobbyId) : removePlayerFromLobby(accepter, accepterCurrentLobbyId);
                         connectedUsers[id].lobby = joiningLobbyId;
                         lobbies[joiningLobbyId].players.add(accepter);
-                        addPlayerToLobby(joiningLobbyId, accepter);
+                        //addPlayerToLobby(joiningLobbyId, accepter);
                         broadcastInLobby(JSON.stringify({
                             currentLobbyStatus: {leader: lobbies[joiningLobbyId].leader, players: Array.from(lobbies[joiningLobbyId].players)},
                             message:`${accepter} joined the lobby`
@@ -181,7 +182,7 @@ wss.on('connection', function connection(userSocket) {
                     const currentLobbyId = connectedUsers[id].lobby || "";
                     const lobbyLeader = lobbies[currentLobbyId].leader;
                     removePlayerFromLobby(deserter, currentLobbyId);
-                    removePlayerFromDatabaseLobby(currentLobbyId, deserter);
+                    //removePlayerFromDatabaseLobby(currentLobbyId, deserter);
                     if (deserter != lobbyLeader) {
                         connectedUsers[id].lobby = lobbyId;
                         lobbies[lobbyId] = {
@@ -198,6 +199,17 @@ wss.on('connection', function connection(userSocket) {
                     ws.send(`You left ${lobbyLeader}'s lobby`);
                 }
             })
+        }
+
+        if (parsedData.type == "SEND_FRIEND_REQUEST") {
+            const from = parsedData.playFabId;
+            const to = parsedData.friendPlayFabId;
+            const result = await twoWayAddFriend(from, to);
+            userSocket.send(JSON.stringify({
+                type: 'FRIEND_REQUEST_PROCESSED',
+                success: result.success,
+                error: result.error || null
+            },null,2))
         }
 
         if (parsedData.type == "RETRIEVE_LOBBY") {
@@ -231,7 +243,7 @@ wss.on('connection', function connection(userSocket) {
                     const playerName = connectedUsers[id].username;
                     const userLobby = connectedUsers[id].lobby || "";
                     removePlayerFromLobby(playerName, userLobby);
-                    removePlayerFromDatabaseLobby(userLobby, playerName);
+                    //removePlayerFromDatabaseLobby(userLobby, playerName);
                     delete connectedUsers[id];
                     removePlayerOnDisconnect(playerName);
                     broadcast(`${playerName} is now offline`, playerName);
@@ -298,18 +310,18 @@ async function removePlayerFromLobby(username: string, lobbyId: string, leaderNe
                         connectedUsers[id].lobby = newLobbyId;
                     }
                 })
-                await addLobby(newLobbyId, playerUsername, new Set<string>([playerUsername]))
-                await removePlayerFromDatabaseLobby(lobbyId,playerUsername);
+                //await addLobby(newLobbyId, playerUsername, new Set<string>([playerUsername]))
+                //await removePlayerFromDatabaseLobby(lobbyId,playerUsername);
             }
         })
         if (leaderNewLobby) {
             delete lobbies[lobbyId];
-            await deleteLobby(lobbyId);
+            //await deleteLobby(lobbyId);
         }
     }
     else {
         lobbies[lobbyId].players.delete(username);
-        await removePlayerFromDatabaseLobby(lobbyId, username);
+        //await removePlayerFromDatabaseLobby(lobbyId, username);
     }
 }
 
