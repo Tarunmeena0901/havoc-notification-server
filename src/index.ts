@@ -189,8 +189,8 @@ wss.on('connection', function connection(userSocket) {
                             leader: deserter,
                             players: new Set<string>([deserter])
                         }
-                        changeLobbyLeader(lobbyId,deserter);
-                        addPlayerToLobby(lobbyId, deserter);
+                        //changeLobbyLeader(lobbyId,deserter);
+                        //addPlayerToLobby(lobbyId, deserter);
                     }
                     broadcastInLobby(JSON.stringify({
                         currentLobbyStatus: {leader: lobbies[currentLobbyId].leader, players: Array.from(lobbies[currentLobbyId].players)},
