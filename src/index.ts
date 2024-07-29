@@ -1,6 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { addLobby, addPlayerToLobby, addUser, changeLobbyLeader, deleteLobby, findPlayerById, rebuildLobbies, removePlayerFromDatabaseLobby } from "./sql/sql_function";
-import { setConfirmTags, twoWayAddFriend } from "./playFab/playfab_function";
+import { setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 
 const wss = new WebSocketServer({ port: 8080 });
 
