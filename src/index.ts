@@ -1,6 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { addLobby, addPlayerToLobby, addUser, changeLobbyLeader, deleteLobby, findPlayerById, rebuildLobbies, removePlayerFromDatabaseLobby } from "./sql/sql_function";
-import { twoWayAddFriend } from "./playFab/playfab_function";
+import { setConfirmTags, twoWayAddFriend } from "./playFab/playfab_function";
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -21,7 +21,7 @@ const lobbies: {
     }
 } = {};
 
-const serializedLobbies : {
+const serializedLobbies: {
     [key: string]: {
         leader: string,
         players: string[]
@@ -46,7 +46,7 @@ wss.on('connection', function connection(userSocket) {
         leader: "",
         players: new Set<string>()
     }
-   //addLobby(lobbyId,"", new Set<string>());
+    //addLobby(lobbyId,"", new Set<string>());
 
     userSocket.on('message', async function message(data: string) {
         const parsedData = JSON.parse(data);
@@ -152,9 +152,9 @@ wss.on('connection', function connection(userSocket) {
                         lobbies[joiningLobbyId].players.add(accepter);
                         //addPlayerToLobby(joiningLobbyId, accepter);
                         broadcastInLobby(JSON.stringify({
-                            currentLobbyStatus: {leader: lobbies[joiningLobbyId].leader, players: Array.from(lobbies[joiningLobbyId].players)},
-                            message:`${accepter} joined the lobby`
-                        },null,2), joiningLobbyId, accepter);
+                            currentLobbyStatus: { leader: lobbies[joiningLobbyId].leader, players: Array.from(lobbies[joiningLobbyId].players) },
+                            message: `${accepter} joined the lobby`
+                        }, null, 2), joiningLobbyId, accepter);
                         userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
                     }
                 }
@@ -193,9 +193,9 @@ wss.on('connection', function connection(userSocket) {
                         //addPlayerToLobby(lobbyId, deserter);
                     }
                     broadcastInLobby(JSON.stringify({
-                        currentLobbyStatus: {leader: lobbies[currentLobbyId].leader, players: Array.from(lobbies[currentLobbyId].players)},
-                        message:`${deserter} left the lobby`
-                    },null,2), currentLobbyId, deserter);
+                        currentLobbyStatus: { leader: lobbies[currentLobbyId].leader, players: Array.from(lobbies[currentLobbyId].players) },
+                        message: `${deserter} left the lobby`
+                    }, null, 2), currentLobbyId, deserter);
                     ws.send(`You left ${lobbyLeader}'s lobby`);
                 }
             })
@@ -209,7 +209,18 @@ wss.on('connection', function connection(userSocket) {
                 type: 'FRIEND_REQUEST_PROCESSED',
                 success: result.success,
                 error: result.error || null
-            },null,2))
+            }, null, 2))
+        }
+
+        if (parsedData.type == "CONFIRM_FRIEND_REQUEST") {
+            const from = parsedData.playFabId;
+            const to = parsedData.friendPlayFabId;
+            const result = await setConfirmTags(from, to);
+            userSocket.send(JSON.stringify({
+                type: 'CONFIRM_REQUEST_PROCESSED',
+                success: result.success,
+                error: result.error || null
+            }, null, 2))
         }
 
         if (parsedData.type == "RETRIEVE_LOBBY") {
