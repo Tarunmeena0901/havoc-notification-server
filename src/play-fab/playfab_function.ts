@@ -1,6 +1,8 @@
 import axios from "axios"
 require('dotenv').config();
 
+type TagType = 'SentPending' | 'RecievePending' | 'Confirm' | 'Decline';
+
 const addFriendUrl = process.env.PLAYFAB_ADD_FRIEND_URL || "";
 const setTagUrl = process.env.PLAYFAB_SET_TAG_URL || "";
 const secret = process.env.PLAYFAB_SECRET || "";
@@ -9,6 +11,7 @@ const tags = {
   SentPending: ["SentPending"],
   RecievePending: ["RecievePending"],
   Confirm: ["Confirm"],
+  Decline: ["Decline"]
 };
 
 const setTagPayload = (from: string, to: string, tag: string[]) => ({
@@ -73,27 +76,28 @@ export async function twoWayAddFriend(PlayFabId: string, FriendPlayFabId: string
   }
 }
 
-export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string) {
+export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string, tag: TagType) {
 
-  try {
-    await Promise.all([
-      sendRequest(
-        setTagUrl,
-        setTagPayload(PlayFabId, FriendPlayFabId, tags.Confirm),
-      ),
-      sendRequest(
-        setTagUrl,
-        setTagPayload(FriendPlayFabId, PlayFabId, tags.Confirm),
-      ),
-    ]);
+    try {
+      await Promise.all([
+        sendRequest(
+          setTagUrl,
+          setTagPayload(PlayFabId, FriendPlayFabId, tags[tag]),
+        ),
+        sendRequest(
+          setTagUrl,
+          setTagPayload(FriendPlayFabId, PlayFabId, tags[tag]),
+        ),
+      ]);
 
-    console.log("Confirm tags set successfully");
-    return { success: true };
-  } catch (error: any) {
-    console.error(
-      "Error in confirming friend request :",
-      error.message,
-    );
-    return { success: false, error: error.message };
-  }
+      console.log(`${tag} tags set successfully`);
+      return { success: true };
+    } catch (error: any) {
+      console.error(
+        `Error in ${tag}ing friend request :`,
+        error.message,
+      );
+      return { success: false, error: error.message };
+    }
+  
 }
