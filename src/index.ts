@@ -197,19 +197,6 @@ wss.on('connection', function connection(userSocket) {
                 if (username === deserter) {
                     const currentLobbyId = connectedUsers[id].lobby || "";
                     const lobbyLeader = lobbies[currentLobbyId].leader;
-                    const lobbyMembers: LobbyMembers = {}
-                    lobbies[currentLobbyId].players.forEach((username) => {
-                        let i = 1;
-                        if (username != lobbyLeader) {
-                            lobbyMembers[`member-${i}`] = username
-                        }
-                        i++;
-                    });
-                    const lobbyUpdate = {
-                        "type": "LOBBY_DETAILS",
-                        "leader": lobbyLeader,
-                    }
-                    const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
 
                     if (deserter == lobbyLeader) {
                         broadcastInLobby(JSON.stringify({ "type": "LOBBY_DESTROYED" }, null, 2), currentLobbyId, deserter);
@@ -223,6 +210,21 @@ wss.on('connection', function connection(userSocket) {
                             leader: deserter,
                             players: new Set<string>([deserter])
                         }
+
+                        const lobbyMembers: LobbyMembers = {}
+                        lobbies[currentLobbyId].players.forEach((username) => {
+                            let i = 1;
+                            if (username != lobbyLeader) {
+                                lobbyMembers[`member-${i}`] = username
+                            }
+                            i++;
+                        });
+                        const lobbyUpdate = {
+                            "type": "LOBBY_DETAILS",
+                            "leader": lobbyLeader,
+                        }
+                        const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
+
                         broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), currentLobbyId, deserter);
                         ws.send(`You left ${lobbyLeader}'s lobby`);
                         //changeLobbyLeader(lobbyId,deserter);
@@ -294,7 +296,27 @@ wss.on('connection', function connection(userSocket) {
                 if (connectedUsers[id] && connectedUsers[id].username) {
                     const playerName = connectedUsers[id].username;
                     const userLobby = connectedUsers[id].lobby || "";
+
+                    if (playerName == lobbies[userLobby].leader) {
+                        broadcastInLobby(JSON.stringify({ "type": "LOBBY_DESTROYED" }, null, 2), userLobby, playerName);
+                    }
                     removePlayerFromLobby(playerName, userLobby);
+                    if (playerName != lobbies[userLobby].leader) {
+                        const lobbyMembers: LobbyMembers = {}
+                        lobbies[userLobby].players.forEach((username) => {
+                            let i = 1;
+                            if (username != lobbies[userLobby].leader) {
+                                lobbyMembers[`member-${i}`] = username
+                            }
+                            i++;
+                        });
+                        const lobbyUpdate = {
+                            "type": "LOBBY_DETAILS",
+                            "leader": lobbies[userLobby].leader,
+                        }
+                        const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
+                        broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), userLobby, playerName);
+                    }
                     //removePlayerFromDatabaseLobby(userLobby, playerName);
                     removePlayerOnDisconnect(playerName);
                     delete connectedUsers[id];
