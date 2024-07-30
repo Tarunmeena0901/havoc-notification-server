@@ -2,6 +2,8 @@ import { WebSocket, WebSocketServer } from "ws";
 import { addLobby, addPlayerToLobby, addUser, changeLobbyLeader, deleteLobby, findPlayerById, rebuildLobbies, removePlayerFromDatabaseLobby } from "./sql/sql_function";
 import { setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 
+type LobbyMembers = {[key: string]: string } 
+
 const wss = new WebSocketServer({ port: 8080 });
 
 const players: string[] = [];
@@ -137,7 +139,6 @@ wss.on('connection', function connection(userSocket) {
             const joiningLobbyId = parsedData.lobbyId;
             const response = parsedData.response;
             let userOnline = false;
-
             Object.keys(connectedUsers).forEach((id) => {
                 const { ws, username } = connectedUsers[id];
                 if (username == accepter) {
@@ -147,10 +148,21 @@ wss.on('connection', function connection(userSocket) {
                         connectedUsers[id].lobby = joiningLobbyId;
                         lobbies[joiningLobbyId].players.add(accepter);
                         //addPlayerToLobby(joiningLobbyId, accepter);
-                        broadcastInLobby(JSON.stringify({
-                            currentLobbyStatus: { leader: lobbies[joiningLobbyId].leader, players: Array.from(lobbies[joiningLobbyId].players) },
-                            message: `${accepter} joined the lobby`
-                        }, null, 2), joiningLobbyId, accepter);
+                        const lobbyMembers: LobbyMembers = {}
+                        lobbies[joiningLobbyId].players.forEach((username, i) => {
+                            if(username != lobbies[joiningLobbyId].leader){
+                            lobbyMembers[`member-${i}`] = username
+                        }
+                        });
+                        const lobbyUpdate = {
+                            "type": "LOBBY_MEMBER_UPDATE",
+                            "user": accepter,
+                            "message": `${accepter} joined the lobby`,
+                            "leader": lobbies[joiningLobbyId].leader,
+                        }
+
+                        const lobbyUpdateResponse = {...lobbyUpdate, lobbyMembers}
+                        broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), joiningLobbyId, accepter);
                         userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
                     }
                 }
