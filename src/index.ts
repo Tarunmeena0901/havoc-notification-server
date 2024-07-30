@@ -243,11 +243,20 @@ wss.on('connection', function connection(userSocket) {
             } else if (lobbyId && one) {
                 const lobby = lobbies[lobbyId];
                 if (lobby) {
-                    const serializedLobby = {
-                        leader: lobby.leader,
-                        players: Array.from(lobby.players)
-                    };
-                    userSocket.send(JSON.stringify(serializedLobby, null, 2));
+                    const lobbyMembers: LobbyMembers = {}
+                    lobby.players.forEach((username) => {
+                        let i = 1;
+                        if (username != lobby.leader) {
+                            lobbyMembers[`member-${i}`] = username
+                        }
+                        i++;
+                    });
+                    const lobbyBaseDetails = {
+                        "type": "LOBBY_DETAILS",
+                        "leader": lobby.leader,
+                    }
+                    const lobbyDetail = { ...lobbyBaseDetails, ...lobbyMembers }
+                    userSocket.send(JSON.stringify(lobbyDetail, null, 2));
                 } else {
                     userSocket.send(JSON.stringify({ error: "Lobby not found" }));
                 }
