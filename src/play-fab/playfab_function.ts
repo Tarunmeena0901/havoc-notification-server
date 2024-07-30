@@ -77,7 +77,7 @@ export async function twoWayAddFriend(PlayFabId: string, FriendPlayFabId: string
 }
 
 export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string, tag: TagType) {
-
+  console.log(tags[tag]);
     try {
       await Promise.all([
         sendRequest(

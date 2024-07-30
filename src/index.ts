@@ -218,7 +218,7 @@ wss.on('connection', function connection(userSocket) {
             const tag = parsedData.tag;
             const result = await setConfirmTags(from, to, tag);
             userSocket.send(JSON.stringify({
-                type: 'CONFIRM_REQUEST_PROCESSED',
+                type: 'FINALIZE_REQUEST_PROCESSED',
                 success: result.success,
                 error: result.error || null
             }, null, 2))
