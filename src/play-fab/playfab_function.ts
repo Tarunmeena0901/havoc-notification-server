@@ -110,7 +110,7 @@ export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string,
           }
         ),
       ]);
-      console.log(`Friend request decline succesfully successfully`);
+      console.log(`Friend request decline  successfully`);
     }
     return { success: true };
   } catch (error: any) {

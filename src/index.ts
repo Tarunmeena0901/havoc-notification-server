@@ -42,11 +42,8 @@ wss.on('connection', function connection(userSocket) {
         username: '',
         lobby: lobbyId
     };
-    lobbies[lobbyId] = {
-        leader: "",
-        players: new Set<string>()
-    }
-    //addLobby(lobbyId,"", new Set<string>());
+
+    
 
     userSocket.on('message', async function message(data: string) {
         const parsedData = JSON.parse(data);
@@ -63,9 +60,11 @@ wss.on('connection', function connection(userSocket) {
                 players.push(parsedData.username);
                 connectedUsers[id].username = parsedData.username;
 
-                lobbies[lobbyId].leader = parsedData.username;
-                //changeLobbyLeader(lobbyId, parsedData.username)
-                lobbies[lobbyId].players.add(parsedData.username);
+                lobbies[lobbyId] = {
+                    leader: parsedData.username,
+                    players: new Set<string>().add(parsedData.username)
+                }
+                //addLobby(lobbyId,"", new Set<string>());
                 //addPlayerToLobby(lobbyId, parsedData.username );
 
                 const player_data = {
