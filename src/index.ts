@@ -43,8 +43,6 @@ wss.on('connection', function connection(userSocket) {
         lobby: lobbyId
     };
 
-    
-
     userSocket.on('message', async function message(data: string) {
         const parsedData = JSON.parse(data);
 
@@ -58,7 +56,12 @@ wss.on('connection', function connection(userSocket) {
             })
             if (!duplicateUserNameExist) {
                 players.push(parsedData.username);
-                connectedUsers[id].username = parsedData.username;
+
+                connectedUsers[id] = {
+                    ws: userSocket,
+                    username: parsedData.username,
+                    lobby: lobbyId
+                };
 
                 lobbies[lobbyId] = {
                     leader: parsedData.username,
