@@ -2,7 +2,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { addLobby, addPlayerToLobby, addUser, changeLobbyLeader, deleteLobby, findPlayerById, rebuildLobbies, removePlayerFromDatabaseLobby } from "./sql/sql_function";
 import { setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 
-type LobbyMembers = {[key: string]: string } 
+type LobbyMembers = { [key: string]: string }
 
 const wss = new WebSocketServer({ port: 8080 });
 
@@ -149,10 +149,12 @@ wss.on('connection', function connection(userSocket) {
                         lobbies[joiningLobbyId].players.add(accepter);
                         //addPlayerToLobby(joiningLobbyId, accepter);
                         const lobbyMembers: LobbyMembers = {}
-                        lobbies[joiningLobbyId].players.forEach((username, i) => {
-                            if(username != lobbies[joiningLobbyId].leader){
-                            lobbyMembers[`member-${i+1}`] = username
-                        }
+                        lobbies[joiningLobbyId].players.forEach((username) => {
+                            let i = 1;
+                            if (username != lobbies[joiningLobbyId].leader) {
+                                lobbyMembers[`member-${i}`] = username
+                            }
+                            i++;
                         });
                         const lobbyUpdate = {
                             "type": "LOBBY_MEMBER_UPDATE",
@@ -161,7 +163,7 @@ wss.on('connection', function connection(userSocket) {
                             "leader": lobbies[joiningLobbyId].leader,
                         }
 
-                        const lobbyUpdateResponse = {...lobbyUpdate, lobbyMembers}
+                        const lobbyUpdateResponse = { ...lobbyUpdate, lobbyMembers }
                         broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), joiningLobbyId, accepter);
                         userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
                     }
@@ -224,7 +226,7 @@ wss.on('connection', function connection(userSocket) {
             const from = parsedData.playFabId;
             const to = parsedData.friendPlayFabId;
             const tag = parsedData.tag;
-            const result = await setConfirmTags(from, to, tag) ;
+            const result = await setConfirmTags(from, to, tag);
             userSocket.send(JSON.stringify({
                 type: 'FINALIZE_REQUEST_PROCESSED',
                 success: result.success,
