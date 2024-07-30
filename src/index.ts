@@ -221,14 +221,16 @@ wss.on('connection', function connection(userSocket) {
                         "leader": lobbyLeader,
                     }
                     const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
-                    broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), currentLobbyId, deserter);
+                    
                     if(deserter == lobbyLeader){
-                        broadcastInLobby("leader lefts the lobby, lobby destroyed", currentLobbyId, deserter);
+                        broadcastInLobby(JSON.stringify({"type":"LOBBY_DESTROYED"},null,2), currentLobbyId, deserter);
+                        ws.send(`You left your lobby`);
                     } else {
-                        broadcastInLobby(`You left ${lobbyLeader}'s lobby`, currentLobbyId, deserter);
+                        broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), currentLobbyId, deserter);
+                        ws.send(`You left ${lobbyLeader}'s lobby`);
                     }
 
-                    ws.send(`You left ${lobbyLeader}'s lobby`);
+                    
                 }
             })
         }
