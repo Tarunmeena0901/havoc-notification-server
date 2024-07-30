@@ -216,7 +216,7 @@ wss.on('connection', function connection(userSocket) {
             const from = parsedData.playFabId;
             const to = parsedData.friendPlayFabId;
             const tag = parsedData.tag;
-            const result = await setConfirmTags(from, to, tag);
+            const result = await setConfirmTags(from, to, tag) ;
             userSocket.send(JSON.stringify({
                 type: 'FINALIZE_REQUEST_PROCESSED',
                 success: result.success,

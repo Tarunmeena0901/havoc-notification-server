@@ -78,8 +78,8 @@ export async function twoWayAddFriend(PlayFabId: string, FriendPlayFabId: string
 }
 
 export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string, tag: TagType) {
-  if(tag == 'Confirm'){
-    try {
+  try {
+    if (tag == 'Confirm') {
       await Promise.all([
         sendRequest(
           setTagUrl,
@@ -92,22 +92,13 @@ export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string,
       ]);
 
       console.log(`Confirm tags set successfully`);
-      return { success: true };
-    } catch (error: any) {
-      console.error(
-        `Error in Confirming friend request :`,
-        error.message,
-      );
-      return { success: false, error: error.message };
     }
-  } 
-  if(tag == 'Decline'){
-    try {
+    if (tag == 'Decline') {
       await Promise.all([
         sendRequest(
           removeFriendUrl,
           {
-            PlayFabId: PlayFabId ,
+            PlayFabId: PlayFabId,
             FriendPlayFabId: FriendPlayFabId,
           }
         ),
@@ -119,15 +110,15 @@ export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string,
           }
         ),
       ]);
-
       console.log(`Friend request decline succesfully successfully`);
-      return { success: true };
-    } catch (error: any) {
-      console.error(
-        `Error in declining friend request :`,
-        error.message,
-      );
-      return { success: false, error: error.message };
     }
+    return { success: true };
+  } catch (error: any) {
+    console.error(
+      `Error in declining friend request :`,
+      error.message,
+    );
+    return { success: false, error: error.message };
   }
 }
+
