@@ -37,12 +37,6 @@ wss.on('connection', function connection(userSocket) {
     const id = randomId();
     let lobbyId = randomId();
 
-    connectedUsers[id] = {
-        ws: userSocket,
-        username: '',
-        lobby: lobbyId
-    };
-
     userSocket.on('message', async function message(data: string) {
         const parsedData = JSON.parse(data);
 
