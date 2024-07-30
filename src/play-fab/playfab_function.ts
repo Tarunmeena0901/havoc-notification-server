@@ -5,6 +5,7 @@ type TagType = 'SentPending' | 'RecievePending' | 'Confirm' | 'Decline';
 
 const addFriendUrl = process.env.PLAYFAB_ADD_FRIEND_URL || "";
 const setTagUrl = process.env.PLAYFAB_SET_TAG_URL || "";
+const removeFriendUrl = process.env.PLAYFAB_REMOVE_FRIEND_URL || "";
 const secret = process.env.PLAYFAB_SECRET || "";
 
 const tags = {
@@ -77,27 +78,56 @@ export async function twoWayAddFriend(PlayFabId: string, FriendPlayFabId: string
 }
 
 export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string, tag: TagType) {
-  console.log(tags[tag]);
+  if(tag == 'Confirm'){
     try {
       await Promise.all([
         sendRequest(
           setTagUrl,
-          setTagPayload(PlayFabId, FriendPlayFabId, tags[tag]),
+          setTagPayload(PlayFabId, FriendPlayFabId, tags.Confirm),
         ),
         sendRequest(
           setTagUrl,
-          setTagPayload(FriendPlayFabId, PlayFabId, tags[tag]),
+          setTagPayload(FriendPlayFabId, PlayFabId, tags.Confirm),
         ),
       ]);
 
-      console.log(`${tag} tags set successfully`);
+      console.log(`Confirm tags set successfully`);
       return { success: true };
     } catch (error: any) {
       console.error(
-        `Error in ${tag}ing friend request :`,
+        `Error in Confirming friend request :`,
         error.message,
       );
       return { success: false, error: error.message };
     }
-  
+  } 
+  if(tag == 'Decline'){
+    try {
+      await Promise.all([
+        sendRequest(
+          removeFriendUrl,
+          {
+            PlayFabId: PlayFabId ,
+            FriendPlayFabId: FriendPlayFabId,
+          }
+        ),
+        sendRequest(
+          removeFriendUrl,
+          {
+            PlayFabId: FriendPlayFabId,
+            FriendPlayFabId: PlayFabId,
+          }
+        ),
+      ]);
+
+      console.log(`Friend request decline succesfully successfully`);
+      return { success: true };
+    } catch (error: any) {
+      console.error(
+        `Error in declining friend request :`,
+        error.message,
+      );
+      return { success: false, error: error.message };
+    }
+  }
 }
