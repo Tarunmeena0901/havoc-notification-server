@@ -252,8 +252,9 @@ wss.on('connection', function connection(userSocket) {
                     const userLobby = connectedUsers[id].lobby || "";
                     removePlayerFromLobby(playerName, userLobby);
                     //removePlayerFromDatabaseLobby(userLobby, playerName);
-                    delete connectedUsers[id];
                     removePlayerOnDisconnect(playerName);
+                    delete connectedUsers[id];
+                    delete lobbies[lobbyId];
                     broadcast(`${playerName} is now offline`, playerName);
                 }
             }
