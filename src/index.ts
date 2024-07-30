@@ -157,12 +157,10 @@ wss.on('connection', function connection(userSocket) {
                             i++;
                         });
                         const lobbyUpdate = {
-                            "type": "LOBBY_MEMBER_UPDATE",
-                            "user": accepter,
-                            "message": `${accepter} joined the lobby`,
+                            "type": "LOBBY_DETAILS",
                             "leader": lobbies[joiningLobbyId].leader,
                         }
-
+                        
                         const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
                         broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), joiningLobbyId, accepter);
                         userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
@@ -189,6 +187,7 @@ wss.on('connection', function connection(userSocket) {
             const lobbyId = parsedData.lobbyId;
             const from = parsedData.from;
             broadcastInLobby(message, lobbyId, from);
+            userSocket.send("message sent in the lobby");
         }
 
         if (parsedData.type == "EXIT_LOBBY") {
