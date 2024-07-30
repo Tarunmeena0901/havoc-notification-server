@@ -184,6 +184,13 @@ wss.on('connection', function connection(userSocket) {
             }
         }
 
+        if (parsedData.type == "SEND_MESSAGE_IN_LOBBY"){
+            const message = parsedData.message;
+            const lobbyId = parsedData.lobbyId;
+            const from = parsedData.from;
+            broadcastInLobby(message, lobbyId, from);
+        }
+
         if (parsedData.type == "EXIT_LOBBY") {
             const deserter = parsedData.from;
             Object.keys(connectedUsers).forEach((id) => {
