@@ -197,17 +197,6 @@ wss.on('connection', function connection(userSocket) {
                 if (username === deserter) {
                     const currentLobbyId = connectedUsers[id].lobby || "";
                     const lobbyLeader = lobbies[currentLobbyId].leader;
-                    removePlayerFromLobby(deserter, currentLobbyId);
-                    //removePlayerFromDatabaseLobby(currentLobbyId, deserter);
-                    if (deserter != lobbyLeader) {
-                        connectedUsers[id].lobby = lobbyId;
-                        lobbies[lobbyId] = {
-                            leader: deserter,
-                            players: new Set<string>([deserter])
-                        }
-                        //changeLobbyLeader(lobbyId,deserter);
-                        //addPlayerToLobby(lobbyId, deserter);
-                    }
                     const lobbyMembers: LobbyMembers = {}
                     lobbies[currentLobbyId].players.forEach((username) => {
                         let i = 1;
@@ -221,16 +210,24 @@ wss.on('connection', function connection(userSocket) {
                         "leader": lobbyLeader,
                     }
                     const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
-                    
-                    if(deserter == lobbyLeader){
-                        broadcastInLobby(JSON.stringify({"type":"LOBBY_DESTROYED"},null,2), currentLobbyId, deserter);
+
+                    if (deserter == lobbyLeader) {
+                        broadcastInLobby(JSON.stringify({ "type": "LOBBY_DESTROYED" }, null, 2), currentLobbyId, deserter);
                         ws.send(`You left your lobby`);
-                    } else {
+                    }
+                    removePlayerFromLobby(deserter, currentLobbyId);
+                    //removePlayerFromDatabaseLobby(currentLobbyId, deserter);
+                    if (deserter != lobbyLeader) {
+                        connectedUsers[id].lobby = lobbyId;
+                        lobbies[lobbyId] = {
+                            leader: deserter,
+                            players: new Set<string>([deserter])
+                        }
                         broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), currentLobbyId, deserter);
                         ws.send(`You left ${lobbyLeader}'s lobby`);
+                        //changeLobbyLeader(lobbyId,deserter);
+                        //addPlayerToLobby(lobbyId, deserter);
                     }
-
-                    
                 }
             })
         }
