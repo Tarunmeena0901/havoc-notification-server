@@ -163,7 +163,7 @@ wss.on('connection', function connection(userSocket) {
                             "leader": lobbies[joiningLobbyId].leader,
                         }
 
-                        const lobbyUpdateResponse = { ...lobbyUpdate, lobbyMembers }
+                        const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
                         broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), joiningLobbyId, accepter);
                         userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
                     }
