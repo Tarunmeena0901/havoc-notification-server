@@ -151,7 +151,7 @@ wss.on('connection', function connection(userSocket) {
                         const lobbyMembers: LobbyMembers = {}
                         lobbies[joiningLobbyId].players.forEach((username, i) => {
                             if(username != lobbies[joiningLobbyId].leader){
-                            lobbyMembers[`member-${i}`] = username
+                            lobbyMembers[`member-${i+1}`] = username
                         }
                         });
                         const lobbyUpdate = {
