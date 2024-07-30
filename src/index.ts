@@ -160,7 +160,7 @@ wss.on('connection', function connection(userSocket) {
                             "type": "LOBBY_DETAILS",
                             "leader": lobbies[joiningLobbyId].leader,
                         }
-                        
+
                         const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
                         broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), joiningLobbyId, accepter);
                         userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
@@ -182,7 +182,7 @@ wss.on('connection', function connection(userSocket) {
             }
         }
 
-        if (parsedData.type == "SEND_MESSAGE_IN_LOBBY"){
+        if (parsedData.type == "SEND_MESSAGE_IN_LOBBY") {
             const message = parsedData.message;
             const lobbyId = parsedData.lobbyId;
             const from = parsedData.from;
@@ -208,10 +208,26 @@ wss.on('connection', function connection(userSocket) {
                         //changeLobbyLeader(lobbyId,deserter);
                         //addPlayerToLobby(lobbyId, deserter);
                     }
-                    broadcastInLobby(JSON.stringify({
-                        currentLobbyStatus: { leader: lobbies[currentLobbyId].leader, players: Array.from(lobbies[currentLobbyId].players) },
-                        message: `${deserter} left the lobby`
-                    }, null, 2), currentLobbyId, deserter);
+                    const lobbyMembers: LobbyMembers = {}
+                    lobbies[currentLobbyId].players.forEach((username) => {
+                        let i = 1;
+                        if (username != lobbyLeader) {
+                            lobbyMembers[`member-${i}`] = username
+                        }
+                        i++;
+                    });
+                    const lobbyUpdate = {
+                        "type": "LOBBY_DETAILS",
+                        "leader": lobbyLeader,
+                    }
+                    const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
+                    broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), currentLobbyId, deserter);
+                    if(deserter == lobbyLeader){
+                        broadcastInLobby("leader lefts the lobby, lobby destroyed", currentLobbyId, deserter);
+                    } else {
+                        broadcastInLobby(`You left ${lobbyLeader}'s lobby`, currentLobbyId, deserter);
+                    }
+
                     ws.send(`You left ${lobbyLeader}'s lobby`);
                 }
             })
