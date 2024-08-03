@@ -146,7 +146,7 @@ wss.on('connection', function connection(userSocket) {
                         const accepterCurrentLobbyId = connectedUsers[id].lobby || "";
                         lobbies[accepterCurrentLobbyId].leader == accepter ? removePlayerFromLobby(accepter, accepterCurrentLobbyId, joiningLobbyId) : removePlayerFromLobby(accepter, accepterCurrentLobbyId);
                         connectedUsers[id].lobby = joiningLobbyId;
-                        lobbies[joiningLobbyId].players.add(accepter);
+                        lobbies[joiningLobbyId] && lobbies[joiningLobbyId].players.add(accepter);
                         //addPlayerToLobby(joiningLobbyId, accepter);
                         const lobbyMembers: LobbyMembers = {}
                         lobbies[joiningLobbyId].players.forEach((username) => {
