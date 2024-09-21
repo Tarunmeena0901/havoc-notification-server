@@ -265,6 +265,17 @@ wss.on('connection', function connection(userSocket) {
                 success: result.success,
                 error: result.error || null
             }, null, 2))
+
+            if(!result.error){
+                const reciever = Object.values(connectedUsers).find(user => user.username == to);
+                if(reciever){
+                    reciever.ws.send(JSON.stringify({
+                        type: 'FRIEND_REQUEST_ACCEPTED',
+                        from: from,
+                        message: "Your friend request is accepted"
+                    },null,2))
+                }
+            }
         }
 
         if (parsedData.type == "RETRIEVE_LOBBY") {
