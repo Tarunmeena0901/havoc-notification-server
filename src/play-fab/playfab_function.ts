@@ -118,7 +118,29 @@ export async function setConfirmTags(PlayFabId: string, FriendPlayFabId: string,
       `Error in declining friend request :`,
       error.message,
     );
-    return { success: false, error: error.message };
+    return { success: false, error: error };
   }
 }
 
+export async function removeFriend(PlayFabId: string, FriendPlayFabId: string) {
+
+  const firstRemoveFriendPayload = {
+    PlayFabId,
+    FriendPlayFabId
+  };
+  const secondRemoveFriendPayload = {
+    PlayFabId: FriendPlayFabId,
+    FriendPlayFabId: PlayFabId,
+  };
+  try {
+    await sendRequest(removeFriendUrl, firstRemoveFriendPayload);
+    await sendRequest(removeFriendUrl, secondRemoveFriendPayload);
+    return { success: true };
+  } catch (error) {
+    console.log("error in removing friends");
+    return {
+      success: false,
+      error: error
+    }
+  }
+}

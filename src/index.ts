@@ -1,6 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
 import {addUser, findPlayerById} from "./sql/sql_function";
-import { setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
+import { removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 
 type LobbyMembers = { [key: string]: string }
 
@@ -272,7 +272,35 @@ wss.on('connection', function connection(userSocket) {
                     reciever.ws.send(JSON.stringify({
                         type: 'FRIEND_REQUEST_ACCEPTED',
                         from: from,
+                        success: result.success,
+                        error: result.error || null,
                         message: "Your friend request is accepted"
+                    },null,2))
+                }
+            }
+        }
+
+        if(parsedData.type == "REMOVE_FRIEND"){
+            const from = parsedData.playFabId;
+            const to = parsedData.friendPlayFabId;
+            const result = await removeFriend(from,to);
+
+            userSocket.send(JSON.stringify({
+                type: 'REMOVE_FRIEND_REQUEST_PROCESSED',
+                success: result.success,
+                error: result.error || null,
+                message: result.success ? "Friend removed from you friend list" : "Request failed"
+            }, null, 2))
+
+            if(!result.error){
+                const reciever = Object.values(connectedUsers).find(user => user.username == to);
+                if(reciever){
+                    reciever.ws.send(JSON.stringify({
+                        type: 'REMOVE_FRIEND_REQUEST_PROCESSED',
+                        from: from,
+                        success: result.success,
+                        error: result.error || null,
+                        message: result.success ? "Friend removed from you friend list" : "Request failed"
                     },null,2))
                 }
             }
