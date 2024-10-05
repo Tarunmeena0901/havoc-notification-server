@@ -149,8 +149,8 @@ wss.on('connection', function connection(userSocket) {
                         lobbies[joiningLobbyId] && lobbies[joiningLobbyId].players.add(accepter);
                         //addPlayerToLobby(joiningLobbyId, accepter);
                         const lobbyMembers: LobbyMembers = {}
+                        let i = 0;
                         lobbies[joiningLobbyId].players.forEach((username) => {
-                            let i = 1;
                             if (username != lobbies[joiningLobbyId].leader) {
                                 lobbyMembers[`member-${i}`] = username
                             }
