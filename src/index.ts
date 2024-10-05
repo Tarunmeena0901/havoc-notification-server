@@ -152,7 +152,7 @@ wss.on('connection', function connection(userSocket) {
                         let i = 0;
                         lobbies[joiningLobbyId].players.forEach((username) => {
                             if (username != lobbies[joiningLobbyId].leader) {
-                                lobbyMembers[`member-${i}`] = username
+                                lobbyMembers[`member-${i}`] = username;
                             }
                             i++;
                         });
@@ -162,8 +162,7 @@ wss.on('connection', function connection(userSocket) {
                         }
 
                         const lobbyUpdateResponse = { ...lobbyUpdate, ...lobbyMembers }
-                        broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), joiningLobbyId, accepter);
-                        userSocket.send(`u have joined ${initialSender}'s lobby, ${initialSender} is the leader`);
+                        broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), joiningLobbyId, "0");
                     }
                 }
                 if (username == initialSender) {
