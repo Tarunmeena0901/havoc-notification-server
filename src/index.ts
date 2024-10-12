@@ -83,7 +83,7 @@ wss.on('connection', function connection(userSocket) {
                 const initPlayerInLobby: PlayerInLobby = {
                     username: parsedData.username,
                     ready: false,
-                    spot: 1,
+                    spot: 0,
                     ping: MAX_COUNT
                 }
                 lobbies[lobbyId] = {
@@ -91,7 +91,7 @@ wss.on('connection', function connection(userSocket) {
                     mapId: "FFA",
                     matchType: "custom",
                     players: new Map<string, PlayerInLobby>([[parsedData.username, initPlayerInLobby]]),
-                    filledSpots: new Set<number>([1])
+                    filledSpots: new Set<number>([0])
                 }
                 //addLobby(lobbyId,"", new Set<string>());
                 //addPlayerToLobby(lobbyId, parsedData.username );
@@ -179,7 +179,7 @@ wss.on('connection', function connection(userSocket) {
 
                         let firstAvailableSpot = MAX_COUNT;
 
-                        for (let i = 1; i <= MAX_LOBBY_SPOT; i++) {
+                        for (let i = 0; i <= MAX_LOBBY_SPOT; i++) {
                             if (!lobbies[joiningLobbyId].filledSpots.has(i)) {
                                 firstAvailableSpot = i;
                                 break;
@@ -198,7 +198,7 @@ wss.on('connection', function connection(userSocket) {
                         const lobbyUpdateResponse = {
                             type: "LOBBY_DETAILS",
                             data: {
-                                lobbyId: lobbyId,
+                                lobbyId: joiningLobbyId,
                                 leader: lobbies[joiningLobbyId].leader,
                                 matchType: lobbies[joiningLobbyId].matchType,
                                 mapId: lobbies[joiningLobbyId].mapId,
@@ -287,7 +287,7 @@ wss.on('connection', function connection(userSocket) {
 
             const currentPlayerUpdateData = lobbyUpdateResponse.data.players.find((player) => player.username == from);
 
-            if (updateFields.newSpot) {
+            if (updateFields.newSpot !== undefined) {
                 if (lobbies[lobbyId].filledSpots.has(updateFields.newSpot)) {
                     singleFail = true;
                 } else {
@@ -306,7 +306,7 @@ wss.on('connection', function connection(userSocket) {
 
                 }
             }
-            if (updateFields.ready) {
+            if (updateFields.ready !== undefined) {
                 try {
                     const player = lobbies[lobbyId].players.get(from);
                     if (player && currentPlayerUpdateData) {
@@ -318,7 +318,7 @@ wss.on('connection', function connection(userSocket) {
                 }
             }
 
-            if (updateFields.newMatchType) {
+            if (updateFields.newMatchType !== undefined) {
                 if (from == lobbies[lobbyId].leader) {
                     lobbies[lobbyId].matchType = updateFields.newMatchType;
                     lobbyUpdateResponse.data.matchType = lobbies[lobbyId].matchType;
@@ -327,7 +327,7 @@ wss.on('connection', function connection(userSocket) {
                 }
             }
 
-            if (updateFields.newMapId) {
+            if (updateFields.newMapId !== undefined) {
                 if (from == lobbies[lobbyId].leader) {
                     lobbies[lobbyId].mapId = updateFields.newMapId;
                     lobbyUpdateResponse.data.mapId = lobbies[lobbyId].mapId;
@@ -336,10 +336,12 @@ wss.on('connection', function connection(userSocket) {
                 }
             }
 
-            if (updateFields.ping && currentPlayerUpdateData) {
-                currentPlayerUpdateData.ping = updateFields.ping;
-            } else {
-                console.log("failed to update ping");
+            if (updateFields.ping !== undefined) {
+                if (currentPlayerUpdateData) {
+                    currentPlayerUpdateData.ping = updateFields.ping;
+                } else {
+                    console.log("failed to update ping");
+                }
             }
 
             if (!singleFail) {
@@ -370,20 +372,20 @@ wss.on('connection', function connection(userSocket) {
                         connectedUsers[id].lobby = lobbyId;
                         lobbies[lobbyId] = {
                             leader: deserter,
-                            filledSpots: new Set<number>([1]),
+                            filledSpots: new Set<number>([0]),
                             mapId: "FFA",
                             matchType: "custom",
                             players: new Map<string, PlayerInLobby>([[deserter, {
                                 username: deserter,
                                 ready: false,
-                                spot: 1
+                                spot: 0
                             }]])
                         }
 
                         const lobbyUpdateResponse = {
                             type: "LOBBY_DETAILS",
                             data: {
-                                lobbyId: lobbyId,
+                                lobbyId: currentLobbyId,
                                 leader: lobbies[currentLobbyId].leader,
                                 matchType: lobbies[currentLobbyId].matchType,
                                 mapId: lobbies[currentLobbyId].mapId,
@@ -518,7 +520,7 @@ wss.on('connection', function connection(userSocket) {
                         const lobbyUpdateResponse = {
                             type: "LOBBY_DETAILS",
                             data: {
-                                lobbyId: lobbyId,
+                                lobbyId: userLobbyId,
                                 leader: lobbies[userLobbyId].leader,
                                 matchType: lobbies[userLobbyId].matchType,
                                 mapId: lobbies[userLobbyId].mapId,
@@ -588,13 +590,13 @@ async function removePlayerFromLobby(username: string, lobbyId: string, leaderNe
                 const newLobbyId = randomId();
                 lobbies[newLobbyId] = {
                     leader: playerUsername,
-                    filledSpots: new Set<number>([1]),
+                    filledSpots: new Set<number>([0]),
                     mapId: "FFA",
                     matchType: "custom",
                     players: new Map<string, PlayerInLobby>().set(playerUsername, {
                         username: playerUsername,
                         ready: false,
-                        spot: 1
+                        spot: 0
                     }),
                 };
                 lobbies[lobbyId].players.delete(playerUsername);
