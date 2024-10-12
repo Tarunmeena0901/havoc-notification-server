@@ -89,7 +89,7 @@ wss.on('connection', function connection(userSocket) {
                 lobbies[lobbyId] = {
                     leader: parsedData.username,
                     mapId: "FFA",
-                    matchType: "unranked",
+                    matchType: "custom",
                     players: new Map<string, PlayerInLobby>([[parsedData.username, initPlayerInLobby]]),
                     filledSpots: new Set<number>([1])
                 }
@@ -372,7 +372,7 @@ wss.on('connection', function connection(userSocket) {
                             leader: deserter,
                             filledSpots: new Set<number>([1]),
                             mapId: "FFA",
-                            matchType: "unranked",
+                            matchType: "custom",
                             players: new Map<string, PlayerInLobby>([[deserter, {
                                 username: deserter,
                                 ready: false,
@@ -590,7 +590,7 @@ async function removePlayerFromLobby(username: string, lobbyId: string, leaderNe
                     leader: playerUsername,
                     filledSpots: new Set<number>([1]),
                     mapId: "FFA",
-                    matchType: "unranked",
+                    matchType: "custom",
                     players: new Map<string, PlayerInLobby>().set(playerUsername, {
                         username: playerUsername,
                         ready: false,
