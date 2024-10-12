@@ -88,7 +88,7 @@ wss.on('connection', function connection(userSocket) {
                 }
                 lobbies[lobbyId] = {
                     leader: parsedData.username,
-                    mapId: "map_1",
+                    mapId: "FFA",
                     matchType: "unranked",
                     players: new Map<string, PlayerInLobby>([[parsedData.username, initPlayerInLobby]]),
                     filledSpots: new Set<number>([1])
@@ -198,6 +198,7 @@ wss.on('connection', function connection(userSocket) {
                         const lobbyUpdateResponse = {
                             type: "LOBBY_DETAILS",
                             data: {
+                                lobbyId: lobbyId,
                                 leader: lobbies[joiningLobbyId].leader,
                                 matchType: lobbies[joiningLobbyId].matchType,
                                 mapId: lobbies[joiningLobbyId].mapId,
@@ -267,18 +268,6 @@ wss.on('connection', function connection(userSocket) {
             userSocket.send("lobby IP shared in the lobby");
         }
 
-        // {
-        //     "type": "LOBBY_UPDATE",
-        //     "lobbyId": "lobby_123",
-        //     "from": "player_1",
-        //     "data": {
-        //     "newSpot": 3,
-        //     "ready": true,
-        //     "newMatchType": "ranked",
-        //     "newMapId": "map_123"
-        //     }
-        //     }
-
         if (parsedData.type === "LOBBY_UPDATE") {
             const lobbyId = parsedData.lobbyId;
             const from = parsedData.from;
@@ -287,6 +276,7 @@ wss.on('connection', function connection(userSocket) {
             const lobbyUpdateResponse = {
                 type: "LOBBY_DETAILS",
                 data: {
+                    lobbyId: lobbyId,
                     leader: lobbies[lobbyId].leader,
                     matchType: lobbies[lobbyId].matchType,
                     mapId: lobbies[lobbyId].mapId,
@@ -381,7 +371,7 @@ wss.on('connection', function connection(userSocket) {
                         lobbies[lobbyId] = {
                             leader: deserter,
                             filledSpots: new Set<number>([1]),
-                            mapId: "map_1",
+                            mapId: "FFA",
                             matchType: "unranked",
                             players: new Map<string, PlayerInLobby>([[deserter, {
                                 username: deserter,
@@ -393,6 +383,7 @@ wss.on('connection', function connection(userSocket) {
                         const lobbyUpdateResponse = {
                             type: "LOBBY_DETAILS",
                             data: {
+                                lobbyId: lobbyId,
                                 leader: lobbies[currentLobbyId].leader,
                                 matchType: lobbies[currentLobbyId].matchType,
                                 mapId: lobbies[currentLobbyId].mapId,
@@ -493,6 +484,7 @@ wss.on('connection', function connection(userSocket) {
                     const lobbyDetail = {
                         type: "LOBBY_DETAILS",
                         data: {
+                            lobbyId: lobbyId,
                             leader: lobby.leader,
                             matchType: lobby.matchType,
                             mapId: lobby.mapId,
@@ -526,6 +518,7 @@ wss.on('connection', function connection(userSocket) {
                         const lobbyUpdateResponse = {
                             type: "LOBBY_DETAILS",
                             data: {
+                                lobbyId: lobbyId,
                                 leader: lobbies[userLobbyId].leader,
                                 matchType: lobbies[userLobbyId].matchType,
                                 mapId: lobbies[userLobbyId].mapId,
@@ -596,7 +589,7 @@ async function removePlayerFromLobby(username: string, lobbyId: string, leaderNe
                 lobbies[newLobbyId] = {
                     leader: playerUsername,
                     filledSpots: new Set<number>([1]),
-                    mapId: "map_1",
+                    mapId: "FFA",
                     matchType: "unranked",
                     players: new Map<string, PlayerInLobby>().set(playerUsername, {
                         username: playerUsername,
