@@ -179,12 +179,17 @@ wss.on('connection', function connection(userSocket) {
 
                         let firstAvailableSpot = MAX_COUNT;
 
-                        for (let i = 0; i <= MAX_LOBBY_SPOT; i++) {
-                            if (!lobbies[joiningLobbyId].filledSpots.has(i)) {
-                                firstAvailableSpot = i;
-                                break;
+                        try {
+                            for (let i = 0; i <= MAX_LOBBY_SPOT; i++) {
+                                if (!lobbies[joiningLobbyId].filledSpots.has(i)) {
+                                    firstAvailableSpot = i;
+                                    break;
+                                }
                             }
+                        } catch (error) {
+                            console.log(error);
                         }
+
 
                         lobbies[joiningLobbyId] && lobbies[joiningLobbyId].players.set(accepter, {
                             username: accepter,
@@ -273,6 +278,7 @@ wss.on('connection', function connection(userSocket) {
             const from = parsedData.from;
             const updateFields = parsedData.data as UpdateLobbyData;
             let singleFail = false;
+
             const lobbyUpdateResponse = {
                 type: "LOBBY_DETAILS",
                 data: {
@@ -286,68 +292,84 @@ wss.on('connection', function connection(userSocket) {
             }
 
             const currentPlayerUpdateData = lobbyUpdateResponse.data.players.find((player) => player.username == from);
+            const currentPlayerData = lobbies[lobbyId].players.get(from);
 
-            if (updateFields.newSpot !== undefined) {
+            if (!currentPlayerData || !currentPlayerUpdateData) {
+                userSocket.send("could not find player or player is offline");
+                throw new Error(`player ${from} does not exist`);
+            }
+
+            if (updateFields.newSpot !== undefined && updateFields.newSpot != currentPlayerData.spot) {
                 if (lobbies[lobbyId].filledSpots.has(updateFields.newSpot)) {
                     singleFail = true;
                 } else {
                     try {
-                        const player = lobbies[lobbyId].players.get(from);
-                        if (currentPlayerUpdateData && player) {
-                            const currentSpot = player.spot;
-                            lobbies[lobbyId].filledSpots.delete(currentSpot);
-                            lobbies[lobbyId].filledSpots.add(updateFields.newSpot);
-                            currentPlayerUpdateData.spot = updateFields.newSpot;
-                            lobbyUpdateResponse.data.filledSpots = Array.from(lobbies[lobbyId].filledSpots);
-                        }
+                        const indexOfSpot = lobbyUpdateResponse.data.filledSpots.indexOf(currentPlayerData.spot);
+                        lobbyUpdateResponse.data.filledSpots.splice(indexOfSpot, 1);
+                        lobbyUpdateResponse.data.filledSpots.push(updateFields.newSpot);
+                        currentPlayerUpdateData.spot = updateFields.newSpot;
                     } catch (error) {
                         console.log("error updating the player position in lobby", error);
                     }
 
                 }
             }
-            if (updateFields.ready !== undefined) {
+            if (updateFields.ready !== undefined && updateFields.ready != currentPlayerData.ready) {
                 try {
-                    const player = lobbies[lobbyId].players.get(from);
-                    if (player && currentPlayerUpdateData) {
-                        player.ready = updateFields.ready;
-                        currentPlayerUpdateData.ready = player.ready;
-                    }
+                    currentPlayerUpdateData.ready = updateFields.ready;
                 } catch (error) {
                     singleFail = true;
                 }
             }
 
-            if (updateFields.newMatchType !== undefined) {
-                if (from == lobbies[lobbyId].leader) {
-                    lobbies[lobbyId].matchType = updateFields.newMatchType;
-                    lobbyUpdateResponse.data.matchType = lobbies[lobbyId].matchType;
-                } else {
-                    singleFail = true;
-                }
-            }
-
-            if (updateFields.newMapId !== undefined) {
-                if (from == lobbies[lobbyId].leader) {
-                    lobbies[lobbyId].mapId = updateFields.newMapId;
-                    lobbyUpdateResponse.data.mapId = lobbies[lobbyId].mapId;
-                } else {
-                    singleFail = true;
-                }
-            }
-
             if (updateFields.ping !== undefined) {
-                if (currentPlayerUpdateData) {
+                try {
                     currentPlayerUpdateData.ping = updateFields.ping;
-                } else {
-                    console.log("failed to update ping");
+                } catch (error) {
+                    console.log("failed to update ping", error);
+                    singleFail = true;
+                }
+            }
+
+            if (from == lobbies[lobbyId].leader) {
+                if (updateFields.newMatchType !== undefined && updateFields.newMatchType != lobbies[lobbyId].matchType) {
+                    lobbyUpdateResponse.data.matchType = updateFields.newMatchType;
+                }
+                if (updateFields.newMapId !== undefined && updateFields.newMapId != lobbies[lobbyId].mapId) {
+                    lobbyUpdateResponse.data.mapId = updateFields.newMapId;
+                }
+            } else {
+                if (updateFields.newMatchType !== undefined || updateFields.newMapId !== undefined) {
+                    singleFail = true;
+                    userSocket.send("Only leader can update match type or map ID");
                 }
             }
 
             if (!singleFail) {
+
+                // if no error then update lobby data
+                lobbies[lobbyId].leader = lobbyUpdateResponse.data.leader;
+                lobbies[lobbyId].mapId = lobbyUpdateResponse.data.mapId;
+                lobbies[lobbyId].matchType = lobbyUpdateResponse.data.matchType;
+                lobbies[lobbyId].filledSpots.delete(currentPlayerData.spot);
+                lobbies[lobbyId].filledSpots.add(currentPlayerUpdateData.spot);
+                currentPlayerData.spot = currentPlayerUpdateData.spot;
+                
                 broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), lobbyId, "0");
             } else {
-                userSocket.send(JSON.stringify(lobbyUpdateResponse));
+                const failedLobbyUpdateResponse =  {
+                    type: "LOBBY_DETAILS",
+                    data: {
+                        lobbyId: lobbyId,
+                        leader: lobbies[lobbyId].leader,
+                        matchType: lobbies[lobbyId].matchType,
+                        mapId: lobbies[lobbyId].mapId,
+                        filledSpots: Array.from(lobbies[lobbyId].filledSpots),
+                        players: Array.from(lobbies[lobbyId].players.values())
+                    }
+                }
+
+                userSocket.send(JSON.stringify(failedLobbyUpdateResponse));
                 console.log("Update lobby fields error");
             }
         }
