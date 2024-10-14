@@ -234,7 +234,13 @@ wss.on('connection', function connection(userSocket) {
             const message = parsedData.message;
             const lobbyId = parsedData.lobbyId;
             const from = parsedData.from;
-            broadcastInLobby(message, lobbyId, from);
+            const data = {
+                type: "RECEIVED_MESSSAGE",
+                lobbyId: lobbyId,
+                from: from,
+                message: message
+            }
+            broadcastInLobby(JSON.stringify(data,null,2), lobbyId, from);
             userSocket.send("message sent in the lobby");
         }
 
