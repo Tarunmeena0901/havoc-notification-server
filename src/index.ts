@@ -382,8 +382,6 @@ wss.on('connection', function connection(userSocket) {
                     console.error("Error finding free port:", err);
                 }
             }
-            
-            userSocket
 
         }
 
