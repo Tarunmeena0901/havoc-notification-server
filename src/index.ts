@@ -1,7 +1,9 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { addUser, findPlayerById } from "./sql/sql_function";
-import { removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
+import { createMatchmakingTicket, findFreePort, getMatchmakingStatus, getMatchMembers, removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 import sql from "./sql/database";
+import { exec } from "child_process";
+
 
 type LobbyMembers = { [key: string]: string }
 
@@ -316,13 +318,160 @@ wss.on('connection', function connection(userSocket) {
             }
         }
 
-            if (parsedData.type === "LOBBY_UPDATE") {
-                const lobbyId = parsedData.lobbyId;
-                const from = parsedData.from;
-                const updateFields = parsedData.data as UpdateLobbyData;
-                let singleFail = false;
+        if (parsedData.type === "GET_MATCH") {
+            const queueId = parsedData.queueId;
+            const from = parsedData.from;
 
-                const lobbyUpdateResponse = {
+            const playerLobby = Object.values(lobbies).find((lobby) => lobby.leader === from);
+
+            if (!playerLobby) {
+                throw Error('error finding the lobby');
+            }
+
+            const lobbyMembers = Array.from(playerLobby?.players.values())
+
+            const ticketId = await createMatchmakingTicket(from, queueId, lobbyMembers);
+
+            let matchId = '';
+
+            while (true) {
+                try {
+                    const {Status, MatchId} = await getMatchmakingStatus(queueId, ticketId);
+                    if (Status === 'Matched') {
+                        matchId = MatchId
+                        return;
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 6500));
+                    }
+                } catch (error) {
+                    console.error('Error fetching matchmaking status:', error);
+                    break;
+                }
+            }
+
+            const finalMemberList: any[] = await getMatchMembers(queueId, matchId);
+
+            if(finalMemberList){
+                try {
+                    const port = await findFreePort();
+                    const command = `Panoverse.exe -server -log -port=${port}`; // Change server name
+        
+                    exec(command, (error, stdout, stderr) => {
+                        if (error) {
+                            console.error("Failed to start server:", error);
+                            return;
+                        }
+                        console.log("Server started successfully on port:", port);
+        
+                        Object.values(connectedUsers).forEach((player) => {
+                            finalMemberList.forEach((member) => {
+                                if (player.username === member.Entity.Id) {
+                                    player.ws.send(
+                                        JSON.stringify({
+                                            type: "MATCH_SERVER_START",
+                                            message: "Server started",
+                                            ip: "<VPS_IP>", // Change server ip
+                                            port: port,
+                                        })
+                                    );
+                                }
+                            });
+                        });
+                    });
+                } catch (err) {
+                    console.error("Error finding free port:", err);
+                }
+            }
+            
+            userSocket
+
+        }
+
+        if (parsedData.type === "LOBBY_UPDATE") {
+            const lobbyId = parsedData.lobbyId;
+            const from = parsedData.from;
+            const updateFields = parsedData.data as UpdateLobbyData;
+            let singleFail = false;
+
+            const lobbyUpdateResponse = {
+                type: "LOBBY_DETAILS",
+                data: {
+                    lobbyId: lobbyId,
+                    leader: lobbies[lobbyId].leader,
+                    matchType: lobbies[lobbyId].matchType,
+                    mapId: lobbies[lobbyId].mapId,
+                    filledSpots: Array.from(lobbies[lobbyId].filledSpots),
+                    players: Array.from(lobbies[lobbyId].players.values())
+                }
+            }
+
+            const currentPlayerUpdateData = lobbyUpdateResponse.data.players.find((player) => player.username == from);
+            const currentPlayerData = lobbies[lobbyId].players.get(from);
+
+            if (!currentPlayerData || !currentPlayerUpdateData) {
+                userSocket.send("could not find player or player is offline");
+                throw new Error(`player ${from} does not exist`);
+            }
+
+            if (updateFields.newSpot !== undefined && updateFields.newSpot != currentPlayerData.spot) {
+                if (lobbies[lobbyId].filledSpots.has(updateFields.newSpot)) {
+                    singleFail = true;
+                } else {
+                    try {
+                        const indexOfSpot = lobbyUpdateResponse.data.filledSpots.indexOf(currentPlayerData.spot);
+                        lobbyUpdateResponse.data.filledSpots.splice(indexOfSpot, 1);
+                        lobbyUpdateResponse.data.filledSpots.push(updateFields.newSpot);
+                        currentPlayerUpdateData.spot = updateFields.newSpot;
+                    } catch (error) {
+                        console.log("error updating the player position in lobby", error);
+                    }
+
+                }
+            }
+            if (updateFields.ready !== undefined && updateFields.ready != currentPlayerData.ready) {
+                try {
+                    currentPlayerUpdateData.ready = updateFields.ready;
+                } catch (error) {
+                    singleFail = true;
+                }
+            }
+
+            if (updateFields.ping !== undefined) {
+                try {
+                    currentPlayerUpdateData.ping = updateFields.ping;
+                } catch (error) {
+                    console.log("failed to update ping", error);
+                    singleFail = true;
+                }
+            }
+
+            if (from == lobbies[lobbyId].leader) {
+                if (updateFields.newMatchType !== undefined && updateFields.newMatchType != lobbies[lobbyId].matchType) {
+                    lobbyUpdateResponse.data.matchType = updateFields.newMatchType;
+                }
+                if (updateFields.newMapId !== undefined && updateFields.newMapId != lobbies[lobbyId].mapId) {
+                    lobbyUpdateResponse.data.mapId = updateFields.newMapId;
+                }
+            } else {
+                if (updateFields.newMatchType !== undefined || updateFields.newMapId !== undefined) {
+                    singleFail = true;
+                    userSocket.send("Only leader can update match type or map ID");
+                }
+            }
+
+            if (!singleFail) {
+
+                // if no error then update lobby data
+                lobbies[lobbyId].leader = lobbyUpdateResponse.data.leader;
+                lobbies[lobbyId].mapId = lobbyUpdateResponse.data.mapId;
+                lobbies[lobbyId].matchType = lobbyUpdateResponse.data.matchType;
+                lobbies[lobbyId].filledSpots.delete(currentPlayerData.spot);
+                lobbies[lobbyId].filledSpots.add(currentPlayerUpdateData.spot);
+                currentPlayerData.spot = currentPlayerUpdateData.spot;
+
+                broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), lobbyId, "0");
+            } else {
+                const failedLobbyUpdateResponse = {
                     type: "LOBBY_DETAILS",
                     data: {
                         lobbyId: lobbyId,
@@ -334,240 +483,162 @@ wss.on('connection', function connection(userSocket) {
                     }
                 }
 
-                const currentPlayerUpdateData = lobbyUpdateResponse.data.players.find((player) => player.username == from);
-                const currentPlayerData = lobbies[lobbyId].players.get(from);
+                userSocket.send(JSON.stringify(failedLobbyUpdateResponse));
+                console.log("Update lobby fields error");
+            }
+        }
 
-                if (!currentPlayerData || !currentPlayerUpdateData) {
-                    userSocket.send("could not find player or player is offline");
-                    throw new Error(`player ${from} does not exist`);
-                }
 
-                if (updateFields.newSpot !== undefined && updateFields.newSpot != currentPlayerData.spot) {
-                    if (lobbies[lobbyId].filledSpots.has(updateFields.newSpot)) {
-                        singleFail = true;
-                    } else {
-                        try {
-                            const indexOfSpot = lobbyUpdateResponse.data.filledSpots.indexOf(currentPlayerData.spot);
-                            lobbyUpdateResponse.data.filledSpots.splice(indexOfSpot, 1);
-                            lobbyUpdateResponse.data.filledSpots.push(updateFields.newSpot);
-                            currentPlayerUpdateData.spot = updateFields.newSpot;
-                        } catch (error) {
-                            console.log("error updating the player position in lobby", error);
+
+        if (parsedData.type === "EXIT_LOBBY") {
+            const deserter = parsedData.from;
+            Object.keys(connectedUsers).forEach((id) => {
+                const { username, ws } = connectedUsers[id];
+                if (username === deserter) {
+                    const currentLobbyId = connectedUsers[id].lobby || "";
+                    const lobbyLeader = lobbies[currentLobbyId].leader;
+
+                    if (deserter == lobbyLeader) {
+                        broadcastInLobby(JSON.stringify({ "type": "LOBBY_DESTROYED" }, null, 2), currentLobbyId, deserter);
+                        ws.send(`You left your lobby`);
+                    }
+                    removePlayerFromLobby(deserter, currentLobbyId);
+                    //removePlayerFromDatabaseLobby(currentLobbyId, deserter);
+                    if (deserter != lobbyLeader) {
+                        connectedUsers[id].lobby = lobbyId;
+                        lobbies[lobbyId] = {
+                            leader: deserter,
+                            filledSpots: new Set<number>([0]),
+                            mapId: "FFA",
+                            matchType: "custom",
+                            players: new Map<string, PlayerInLobby>([[deserter, {
+                                username: deserter,
+                                ready: false,
+                                spot: 0
+                            }]])
                         }
 
+                        const lobbyUpdateResponse = {
+                            type: "LOBBY_DETAILS",
+                            data: {
+                                lobbyId: currentLobbyId,
+                                leader: lobbies[currentLobbyId].leader,
+                                matchType: lobbies[currentLobbyId].matchType,
+                                mapId: lobbies[currentLobbyId].mapId,
+                                filledSpots: Array.from(lobbies[currentLobbyId].filledSpots),
+                                players: Array.from(lobbies[currentLobbyId].players.values())
+                            }
+                        }
+                        broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), currentLobbyId, deserter);
+                        ws.send(`You left ${lobbyLeader}'s lobby`);
+                        //changeLobbyLeader(lobbyId,deserter);
+                        //addPlayerToLobby(lobbyId, deserter);
                     }
                 }
-                if (updateFields.ready !== undefined && updateFields.ready != currentPlayerData.ready) {
-                    try {
-                        currentPlayerUpdateData.ready = updateFields.ready;
-                    } catch (error) {
-                        singleFail = true;
-                    }
+            })
+        }
+
+        if (parsedData.type === "SEND_FRIEND_REQUEST") {
+            const from = parsedData.playFabId;
+            const to = parsedData.friendPlayFabId;
+            const result = await twoWayAddFriend(from, to);
+            userSocket.send(JSON.stringify({
+                type: 'FRIEND_REQUEST_PROCESSED',
+                success: result.success,
+                error: result.error || null
+            }, null, 2));
+            if (!result.error) {
+                const reciever = Object.values(connectedUsers).find(user => user.username == to);
+                if (reciever) {
+                    reciever.ws.send(JSON.stringify({
+                        type: 'RECEIVED_FRIEND_REQUEST',
+                        from: from,
+                        message: "You recieved a friend request"
+                    }, null, 2))
                 }
+            }
+        }
 
-                if (updateFields.ping !== undefined) {
-                    try {
-                        currentPlayerUpdateData.ping = updateFields.ping;
-                    } catch (error) {
-                        console.log("failed to update ping", error);
-                        singleFail = true;
-                    }
+        if (parsedData.type === "FINALIZE_FRIEND_REQUEST") {
+            const from = parsedData.playFabId;
+            const to = parsedData.friendPlayFabId;
+            const tag = parsedData.tag;
+            const result = await setConfirmTags(from, to, tag);
+            userSocket.send(JSON.stringify({
+                type: 'FINALIZE_REQUEST_PROCESSED',
+                success: result.success,
+                error: result.error || null
+            }, null, 2))
+
+            if (!result.error) {
+                const reciever = Object.values(connectedUsers).find(user => user.username == to);
+                if (reciever) {
+                    reciever.ws.send(JSON.stringify({
+                        type: 'FRIEND_REQUEST_ACCEPTED',
+                        from: from,
+                        success: result.success,
+                        error: result.error || null,
+                        message: "Your friend request is accepted"
+                    }, null, 2))
                 }
+            }
+        }
 
-                if (from == lobbies[lobbyId].leader) {
-                    if (updateFields.newMatchType !== undefined && updateFields.newMatchType != lobbies[lobbyId].matchType) {
-                        lobbyUpdateResponse.data.matchType = updateFields.newMatchType;
-                    }
-                    if (updateFields.newMapId !== undefined && updateFields.newMapId != lobbies[lobbyId].mapId) {
-                        lobbyUpdateResponse.data.mapId = updateFields.newMapId;
-                    }
-                } else {
-                    if (updateFields.newMatchType !== undefined || updateFields.newMapId !== undefined) {
-                        singleFail = true;
-                        userSocket.send("Only leader can update match type or map ID");
-                    }
+        if (parsedData.type === "REMOVE_FRIEND") {
+            const from = parsedData.playFabId;
+            const to = parsedData.friendPlayFabId;
+            const result = await removeFriend(from, to);
+
+            userSocket.send(JSON.stringify({
+                type: 'REMOVE_FRIEND_REQUEST_PROCESSED',
+                success: result.success,
+                error: result.error || null,
+                message: result.success ? "Friend removed from you friend list" : "Request failed"
+            }, null, 2))
+
+            if (!result.error) {
+                const reciever = Object.values(connectedUsers).find(user => user.username == to);
+                if (reciever) {
+                    reciever.ws.send(JSON.stringify({
+                        type: 'REMOVE_FRIEND_REQUEST_PROCESSED',
+                        from: from,
+                        success: result.success,
+                        error: result.error || null,
+                        message: result.success ? "Friend removed from you friend list" : "Request failed"
+                    }, null, 2))
                 }
+            }
+        }
 
-                if (!singleFail) {
-
-                    // if no error then update lobby data
-                    lobbies[lobbyId].leader = lobbyUpdateResponse.data.leader;
-                    lobbies[lobbyId].mapId = lobbyUpdateResponse.data.mapId;
-                    lobbies[lobbyId].matchType = lobbyUpdateResponse.data.matchType;
-                    lobbies[lobbyId].filledSpots.delete(currentPlayerData.spot);
-                    lobbies[lobbyId].filledSpots.add(currentPlayerUpdateData.spot);
-                    currentPlayerData.spot = currentPlayerUpdateData.spot;
-
-                    broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), lobbyId, "0");
-                } else {
-                    const failedLobbyUpdateResponse = {
+        if (parsedData.type === "RETRIEVE_LOBBY") {
+            const all = parsedData.all || false;
+            const one = parsedData.one || false;
+            const lobbyId = parsedData.lobbyId;
+            if (all) {
+                userSocket.send(JSON.stringify(serializeLobbies(lobbies), null, 2));
+            } else if (lobbyId && one) {
+                const lobby = lobbies[lobbyId];
+                if (lobby) {
+                    const lobbyDetail = {
                         type: "LOBBY_DETAILS",
                         data: {
                             lobbyId: lobbyId,
-                            leader: lobbies[lobbyId].leader,
-                            matchType: lobbies[lobbyId].matchType,
-                            mapId: lobbies[lobbyId].mapId,
-                            filledSpots: Array.from(lobbies[lobbyId].filledSpots),
-                            players: Array.from(lobbies[lobbyId].players.values())
+                            leader: lobby.leader,
+                            matchType: lobby.matchType,
+                            mapId: lobby.mapId,
+                            filledSpots: Array.from(lobby.filledSpots),
+                            players: Array.from(lobby.players.values())
                         }
                     }
-
-                    userSocket.send(JSON.stringify(failedLobbyUpdateResponse));
-                    console.log("Update lobby fields error");
+                    userSocket.send(JSON.stringify(lobbyDetail, null, 2));
+                } else {
+                    userSocket.send(JSON.stringify({ error: "Lobby not found" }));
                 }
             }
-
-
-
-            if (parsedData.type === "EXIT_LOBBY") {
-                const deserter = parsedData.from;
-                Object.keys(connectedUsers).forEach((id) => {
-                    const { username, ws } = connectedUsers[id];
-                    if (username === deserter) {
-                        const currentLobbyId = connectedUsers[id].lobby || "";
-                        const lobbyLeader = lobbies[currentLobbyId].leader;
-
-                        if (deserter == lobbyLeader) {
-                            broadcastInLobby(JSON.stringify({ "type": "LOBBY_DESTROYED" }, null, 2), currentLobbyId, deserter);
-                            ws.send(`You left your lobby`);
-                        }
-                        removePlayerFromLobby(deserter, currentLobbyId);
-                        //removePlayerFromDatabaseLobby(currentLobbyId, deserter);
-                        if (deserter != lobbyLeader) {
-                            connectedUsers[id].lobby = lobbyId;
-                            lobbies[lobbyId] = {
-                                leader: deserter,
-                                filledSpots: new Set<number>([0]),
-                                mapId: "FFA",
-                                matchType: "custom",
-                                players: new Map<string, PlayerInLobby>([[deserter, {
-                                    username: deserter,
-                                    ready: false,
-                                    spot: 0
-                                }]])
-                            }
-
-                            const lobbyUpdateResponse = {
-                                type: "LOBBY_DETAILS",
-                                data: {
-                                    lobbyId: currentLobbyId,
-                                    leader: lobbies[currentLobbyId].leader,
-                                    matchType: lobbies[currentLobbyId].matchType,
-                                    mapId: lobbies[currentLobbyId].mapId,
-                                    filledSpots: Array.from(lobbies[currentLobbyId].filledSpots),
-                                    players: Array.from(lobbies[currentLobbyId].players.values())
-                                }
-                            }
-                            broadcastInLobby(JSON.stringify(lobbyUpdateResponse, null, 2), currentLobbyId, deserter);
-                            ws.send(`You left ${lobbyLeader}'s lobby`);
-                            //changeLobbyLeader(lobbyId,deserter);
-                            //addPlayerToLobby(lobbyId, deserter);
-                        }
-                    }
-                })
-            }
-
-            if (parsedData.type === "SEND_FRIEND_REQUEST") {
-                const from = parsedData.playFabId;
-                const to = parsedData.friendPlayFabId;
-                const result = await twoWayAddFriend(from, to);
-                userSocket.send(JSON.stringify({
-                    type: 'FRIEND_REQUEST_PROCESSED',
-                    success: result.success,
-                    error: result.error || null
-                }, null, 2));
-                if (!result.error) {
-                    const reciever = Object.values(connectedUsers).find(user => user.username == to);
-                    if (reciever) {
-                        reciever.ws.send(JSON.stringify({
-                            type: 'RECEIVED_FRIEND_REQUEST',
-                            from: from,
-                            message: "You recieved a friend request"
-                        }, null, 2))
-                    }
-                }
-            }
-
-            if (parsedData.type === "FINALIZE_FRIEND_REQUEST") {
-                const from = parsedData.playFabId;
-                const to = parsedData.friendPlayFabId;
-                const tag = parsedData.tag;
-                const result = await setConfirmTags(from, to, tag);
-                userSocket.send(JSON.stringify({
-                    type: 'FINALIZE_REQUEST_PROCESSED',
-                    success: result.success,
-                    error: result.error || null
-                }, null, 2))
-
-                if (!result.error) {
-                    const reciever = Object.values(connectedUsers).find(user => user.username == to);
-                    if (reciever) {
-                        reciever.ws.send(JSON.stringify({
-                            type: 'FRIEND_REQUEST_ACCEPTED',
-                            from: from,
-                            success: result.success,
-                            error: result.error || null,
-                            message: "Your friend request is accepted"
-                        }, null, 2))
-                    }
-                }
-            }
-
-            if (parsedData.type === "REMOVE_FRIEND") {
-                const from = parsedData.playFabId;
-                const to = parsedData.friendPlayFabId;
-                const result = await removeFriend(from, to);
-
-                userSocket.send(JSON.stringify({
-                    type: 'REMOVE_FRIEND_REQUEST_PROCESSED',
-                    success: result.success,
-                    error: result.error || null,
-                    message: result.success ? "Friend removed from you friend list" : "Request failed"
-                }, null, 2))
-
-                if (!result.error) {
-                    const reciever = Object.values(connectedUsers).find(user => user.username == to);
-                    if (reciever) {
-                        reciever.ws.send(JSON.stringify({
-                            type: 'REMOVE_FRIEND_REQUEST_PROCESSED',
-                            from: from,
-                            success: result.success,
-                            error: result.error || null,
-                            message: result.success ? "Friend removed from you friend list" : "Request failed"
-                        }, null, 2))
-                    }
-                }
-            }
-
-            if (parsedData.type === "RETRIEVE_LOBBY") {
-                const all = parsedData.all || false;
-                const one = parsedData.one || false;
-                const lobbyId = parsedData.lobbyId;
-                if (all) {
-                    userSocket.send(JSON.stringify(serializeLobbies(lobbies), null, 2));
-                } else if (lobbyId && one) {
-                    const lobby = lobbies[lobbyId];
-                    if (lobby) {
-                        const lobbyDetail = {
-                            type: "LOBBY_DETAILS",
-                            data: {
-                                lobbyId: lobbyId,
-                                leader: lobby.leader,
-                                matchType: lobby.matchType,
-                                mapId: lobby.mapId,
-                                filledSpots: Array.from(lobby.filledSpots),
-                                players: Array.from(lobby.players.values())
-                            }
-                        }
-                        userSocket.send(JSON.stringify(lobbyDetail, null, 2));
-                    } else {
-                        userSocket.send(JSON.stringify({ error: "Lobby not found" }));
-                    }
-                }
-            }
-            console.log(lobbies);
-            console.log(connectedUsers);
-        })
+        }
+        console.log(lobbies);
+        console.log(connectedUsers);
+    })
     userSocket.send("you are connected to notification server please subscribe");
 
     userSocket.on('close', () => {
