@@ -31,19 +31,22 @@ const setTagPayload = (from: string, to: string, tag: string[]) => ({
 });
 
 
-async function sendRequest(url: string, payload: any) {
+async function sendRequest(url: string, payload: any, entityToken?: string) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-SecretKey': secret,
+    'X-EntityToken': entityToken ? entityToken : undefined
+  }
+
   try {
     const response = await axios.post(url, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-SecretKey': secret
-      }
+      headers
     });
     console.log('Response:', response.data);
     return response.data;
   } catch (error: any) {
-    console.error('Error:', error.response ? error.response.data : error.message);
-    throw error;
+    console.error('Error:', error.response.data);
+    throw error.response.data;
   }
 }
 
@@ -177,13 +180,13 @@ export async function createMatchmakingTicket(playerId: string, queueId: string,
   })
 
   const payload = {
-    GiveUpAfterSeconds: 9999,
+    GiveUpAfterSeconds: 3598,
     QueueName: queueId,
     Members: matchmakingPlayer
   }
 
   // POST https://titleId.playfabapi.com/Match/GetMatch
-  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatch`, payload);
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/CreateServerMatchmakingTicket`, payload, process.env.DUMMY_ENTITY_TOKEN);
   const ticketId = response.TicketId;
   return ticketId;
 }
@@ -196,7 +199,7 @@ export async function getMatchmakingStatus(queueId: string, ticketId: string) {
     TicketId: ticketId
   }
 
-  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatchmakingTicket`, payload);
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatchmakingTicket`, payload, process.env.DUMMY_ENTITY_TOKEN);
   const { Status, MatchId } = response;
   return { Status, MatchId }
 }
@@ -210,7 +213,7 @@ export async function getMatchMembers(queueId: string, matchId: string) {
     ReturnMemberAttributes: true
   }
 
-  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatch`, payload);
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatch`, payload, process.env.DUMMY_ENTITY_TOKEN);
   const members = response.Members;
   return members
 
