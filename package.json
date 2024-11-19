@@ -13,8 +13,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/ws": "^8.5.11",
     "axios": "^1.7.2",
+    "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",
     "postgres": "^3.4.4",
     "redis": "^4.7.0",

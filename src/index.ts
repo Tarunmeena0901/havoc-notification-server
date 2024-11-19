@@ -3,6 +3,7 @@ import { addUser, findPlayerById } from "./sql/sql_function";
 import { createMatchmakingTicket, findFreePort, getMatchmakingStatus, getMatchMembers, removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 import sql from "./sql/database";
 import { exec } from "child_process";
+import bcrypt from 'bcrypt';
 
 
 type LobbyMembers = { [key: string]: string }
@@ -103,10 +104,12 @@ wss.on('connection', function connection(userSocket) {
                     id,
                     username: parsedData.username
                 }
-                const isStoredInDatabase = await findPlayerById(parsedData.username);
-                if (!isStoredInDatabase) {
-                    await addUser(player_data);
-                }
+
+                // RECHECK : this may not be required after login function
+                // const isStoredInDatabase = await findPlayerById(parsedData.username);
+                // if (!isStoredInDatabase) {
+                //     await addUser(player_data);
+                // }
                 broadcast(`${parsedData.username} is now online`, parsedData.username);
             }
         }
@@ -282,41 +285,6 @@ wss.on('connection', function connection(userSocket) {
             userSocket.send("lobby IP shared in the lobby");
         }
 
-        if (parsedData.type === "SIGN_UP") {
-
-            const { action, customId, username, password, region, matchAttributes, rank } = parsedData;
-
-            const userExists = await sql.query('SELECT * FROM users WHERE username = $1', [username]);
-            if (userExists.rows.length > 0) {
-                userSocket.send(JSON.stringify({ status: 'error', message: 'Username already exists.' }));
-                sql.release();
-                return;
-            }
-
-            await sql.query(
-                'INSERT INTO users (custom_id, username, password, rank) VALUES ($1, $2, $3, $4)',
-                [id, username, password, rank || 1000]
-            );
-            sql.release();
-
-            userSocket.send(JSON.stringify({ status: 'success', message: 'User signed up successfully.', customId: id }));
-
-        }
-
-        if (parsedData.type === "SIGN_UP") {
-            const userResult = await sql.query('SELECT * FROM users WHERE custom_id = $1', [id]);
-            sql.release();
-
-            if (userResult.rows.length === 0) {
-                userSocket.send(JSON.stringify({ status: 'error', message: 'User not found.' }));
-            } else {
-                const user = userResult.rows[0];
-                // Add player to active players
-                // activePlayers.set(customId, { ws, rank: user.rank });
-                userSocket.send(JSON.stringify({ status: 'success', message: 'Login successful.', username: user.username }));
-
-            }
-        }
 
         if (parsedData.type === "GET_MATCH") {
             const queueId = parsedData.queueId;
@@ -329,9 +297,11 @@ wss.on('connection', function connection(userSocket) {
             }
 
             const lobbyMembers = Array.from(playerLobby?.players.values())
+            console.log("LOBBY ",  JSON.stringify(lobbyMembers,null,2))
 
             const ticketId = await createMatchmakingTicket(from, queueId, lobbyMembers);
 
+            console.log("TICKET ID ",  JSON.stringify(ticketId,null,2))
             let matchId = '';
 
             while (true) {
@@ -351,39 +321,105 @@ wss.on('connection', function connection(userSocket) {
 
             const finalMemberList: any[] = await getMatchMembers(queueId, matchId);
 
-            if(finalMemberList){
-                try {
-                    const port = await findFreePort();
-                    const command = `Panoverse.exe -server -log -port=${port}`; // Change server name
+            console.log("MEMBERS ",  JSON.stringify(finalMemberList,null,2))
+
+            // if(finalMemberList){
+            //     try {
+            //         const port = await findFreePort();
+            //         const command = `Panoverse.exe -server -log -port=${port}`; // Change server name
         
-                    exec(command, (error, stdout, stderr) => {
-                        if (error) {
-                            console.error("Failed to start server:", error);
-                            return;
-                        }
-                        console.log("Server started successfully on port:", port);
+            //         exec(command, (error, stdout, stderr) => {
+            //             if (error) {
+            //                 console.error("Failed to start server:", error);
+            //                 return;
+            //             }
+            //             console.log("Server started successfully on port:", port);
         
-                        Object.values(connectedUsers).forEach((player) => {
-                            finalMemberList.forEach((member) => {
-                                if (player.username === member.Entity.Id) {
-                                    player.ws.send(
-                                        JSON.stringify({
-                                            type: "MATCH_SERVER_START",
-                                            message: "Server started",
-                                            ip: "<VPS_IP>", // Change server ip
-                                            port: port,
-                                        })
-                                    );
-                                }
-                            });
-                        });
-                    });
-                } catch (err) {
-                    console.error("Error finding free port:", err);
-                }
-            }
+            //             Object.values(connectedUsers).forEach((player) => {
+            //                 finalMemberList.forEach((member) => {
+            //                     if (player.username === member.Entity.Id) {
+            //                         player.ws.send(
+            //                             JSON.stringify({
+            //                                 type: "MATCH_SERVER_START",
+            //                                 message: "Server started",
+            //                                 ip: "<VPS_IP>", // Change server ip
+            //                                 port: port,
+            //                             })
+            //                         );
+            //                     }
+            //                 });
+            //             });
+            //         });
+            //     } catch (err) {
+            //         console.error("Error finding free port:", err);
+            //     }
+            // }
 
         }
+
+        if (parsedData.type === 'signup') {
+            
+            const {displayName, password, email , playfabId} = parsedData
+
+            if (!displayName || !password || !email) {
+              userSocket.send(JSON.stringify({ status: 'error', message: 'Username, password, and email are required.' }));
+              return;
+            }
+    
+            const userExists = await sql`SELECT * FROM player_data WHERE display_name = ${displayName} OR email = ${email}`;
+            if (userExists.length > 0) {
+                userSocket.send(JSON.stringify({ status: 'error', message: 'Username or email already exists.' }));
+              return;
+            }
+    
+            const passwordHash = await bcrypt.hash(password, 9);
+
+            // setting inital rank to 1
+            await sql`
+              INSERT INTO player_data (playfab_id, display_name, email, password_hash, rank)
+              VALUES (${playfabId}, ${displayName}, ${email}, ${passwordHash}, 1) 
+            `;
+            
+            userSocket.send(JSON.stringify({ status: 'success', message: 'User signed up successfully.', customId: playfabId }));
+          }
+
+          if (parsedData.type === 'LOGIN') {
+            
+            const {displayName , password} = parsedData;
+
+            if (!displayName || !password) {
+              userSocket.send(JSON.stringify({ status: 'error', message: 'Username and password are required.' }));
+              return;
+            }
+    
+            const userResult = await sql`SELECT * FROM player_data WHERE display_name = ${displayName}`;
+    
+            if (userResult.length === 0) {
+              userSocket.send(JSON.stringify({ status: 'error', message: 'User not found.' }));
+              return;
+            }
+    
+            const user = userResult[0];
+            const passwordMatch = await bcrypt.compare(password, user.password_hash);
+            if (!passwordMatch) {
+              userSocket.send(JSON.stringify({ status: 'error', message: 'Invalid password.' }));
+              return;
+            }
+    
+            const sessionId = crypto.randomUUID();
+
+            await sql`
+              INSERT INTO sessions (session_id, player_id, expires_at)
+              VALUES (${sessionId}, ${user.player_id}, NOW() + INTERVAL '12 hour')
+            `;
+    
+            // Add player to active players
+            // RECHECK: either add the player in active player list while login or while subscribing
+
+            // activePlayers.set(user.playfab_id, { ws, rank: user.rank });
+
+            userSocket.send(JSON.stringify({ status: 'success', message: 'Login successful.', sessionId }));
+          }
 
         if (parsedData.type === "LOBBY_UPDATE") {
             const lobbyId = parsedData.lobbyId;
