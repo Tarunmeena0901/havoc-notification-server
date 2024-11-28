@@ -323,37 +323,37 @@ wss.on('connection', function connection(userSocket) {
 
             console.log("MEMBERS ",  JSON.stringify(finalMemberList,null,2))
 
-            // if(finalMemberList){
-            //     try {
-            //         const port = await findFreePort();
-            //         const command = `Panoverse.exe -server -log -port=${port}`; // Change server name
+            if(finalMemberList){
+                try {
+                    const port = await findFreePort();
+                    const command = `Panoverse.exe -server -log -port=${port}`;
         
-            //         exec(command, (error, stdout, stderr) => {
-            //             if (error) {
-            //                 console.error("Failed to start server:", error);
-            //                 return;
-            //             }
-            //             console.log("Server started successfully on port:", port);
+                    exec(command, (error, stdout, stderr) => {
+                        if (error) {
+                            console.error("Failed to start server:", error);
+                            return;
+                        }
+                        console.log("Server started successfully on port:", port);
         
-            //             Object.values(connectedUsers).forEach((player) => {
-            //                 finalMemberList.forEach((member) => {
-            //                     if (player.username === member.Entity.Id) {
-            //                         player.ws.send(
-            //                             JSON.stringify({
-            //                                 type: "MATCH_SERVER_START",
-            //                                 message: "Server started",
-            //                                 ip: "<VPS_IP>", // Change server ip
-            //                                 port: port,
-            //                             })
-            //                         );
-            //                     }
-            //                 });
-            //             });
-            //         });
-            //     } catch (err) {
-            //         console.error("Error finding free port:", err);
-            //     }
-            // }
+                        Object.values(connectedUsers).forEach((player) => {
+                            finalMemberList.forEach((member) => {
+                                if (player.username === member.Entity.Id) {
+                                    player.ws.send(
+                                        JSON.stringify({
+                                            type: "MATCH_SERVER_START",
+                                            message: "Server started",
+                                            ip: "204.10.193.60",
+                                            port: port,
+                                        })
+                                    );
+                                }
+                            });
+                        });
+                    });
+                } catch (err) {
+                    console.error("Error finding free port:", err);
+                }
+            }
 
         }
 

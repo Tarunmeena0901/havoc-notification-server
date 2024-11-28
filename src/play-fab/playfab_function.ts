@@ -219,11 +219,11 @@ export async function getMatchMembers(queueId: string, matchId: string) {
 
 }
 
-export async function findFreePort(startPort = 6000) {
+export async function findFreePort(startPort = 7777) {
 
   let port = startPort;
 
-  while (port < 9000) {
+  while (port < 7810) {
     const isFree = await new Promise((resolve) => {
       const server = net.createServer();
       server.once('error', () => resolve(false));
