@@ -1,6 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { addUser, findPlayerById } from "./sql/sql_function";
-import { createMatchmakingTicket, findFreePort, getMatchmakingStatus, getMatchMembers, removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
+import { createMatchmakingTicket, findFreePort, getEntityToken, getMatchmakingStatus, getMatchMembers, removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 import sql from "./sql/database";
 import { exec } from "child_process";
 import bcrypt from 'bcrypt';
@@ -290,6 +290,8 @@ wss.on('connection', function connection(userSocket) {
             const queueId = parsedData.queueId;
             const from = parsedData.from;
 
+            const entityTokenData = await getEntityToken();
+
             const playerLobby = Object.values(lobbies).find((lobby) => lobby.leader === from);
 
             if (!playerLobby) {
@@ -306,7 +308,7 @@ wss.on('connection', function connection(userSocket) {
 
             while (true) {
                 try {
-                    const {Status, MatchId} = await getMatchmakingStatus(queueId, ticketId);
+                    const {Status, MatchId} = await getMatchmakingStatus(queueId, ticketId, entityTokenData.token);
                     if (Status === 'Matched') {
                         matchId = MatchId
                         return;
@@ -319,14 +321,14 @@ wss.on('connection', function connection(userSocket) {
                 }
             }
 
-            const finalMemberList: any[] = await getMatchMembers(queueId, matchId);
+            const finalMemberList: any[] = await getMatchMembers(queueId, matchId, entityTokenData.token);
 
             console.log("MEMBERS ",  JSON.stringify(finalMemberList,null,2))
 
             if(finalMemberList){
                 try {
                     const port = await findFreePort();
-                    const command = `Panoverse.exe -server -log -port=${port}`;
+                    const command = `Panoverse.exe -server -log -port=${port}`; // Change server name
         
                     exec(command, (error, stdout, stderr) => {
                         if (error) {

@@ -50,6 +50,35 @@ async function sendRequest(url: string, payload: any, entityToken?: string) {
   }
 }
 
+// async function getEntityToken(playfabId: string){
+//   const payload = {
+//     CustomId: playfabId,
+//     "CreateAccount": false,
+//     TitleId: process.env.PLAYFAB_TITLE_ID
+//   }
+//   const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Client/LoginWithCustomID`, payload)
+// }
+
+export async function getEntityToken(){
+
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Authentication/GetEntityToken`,{})
+
+  if(response.status === 'OK'){
+
+    return {
+      success: true,
+      token : response.data?.EntityToken,
+      message: ''
+    }
+  } else {
+    return {
+      success: false,
+      token: null,
+      message: response.errorMessage
+    }
+  }
+}
+
 
 export async function twoWayAddFriend(PlayFabId: string, FriendPlayFabId: string) {
 
@@ -191,7 +220,7 @@ export async function createMatchmakingTicket(playerId: string, queueId: string,
   return ticketId;
 }
 
-export async function getMatchmakingStatus(queueId: string, ticketId: string) {
+export async function getMatchmakingStatus(queueId: string, ticketId: string, entityToken: string) {
 
   const payload = {
     EscapeObject: false,
@@ -204,7 +233,7 @@ export async function getMatchmakingStatus(queueId: string, ticketId: string) {
   return { Status, MatchId }
 }
 
-export async function getMatchMembers(queueId: string, matchId: string) {
+export async function getMatchMembers(queueId: string, matchId: string, entityToken: string) {
 
   const payload = {
     EscapeObject: false,
