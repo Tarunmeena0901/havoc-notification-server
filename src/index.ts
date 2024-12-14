@@ -328,7 +328,7 @@ wss.on('connection', function connection(userSocket) {
             if(finalMemberList){
                 try {
                     const port = await findFreePort();
-                    const command = `../../WindowsServer/PanoverseServer.exe -server -log -port=${port}`;
+                    const command = `./../../WindowsServer/PanoverseServer.exe -server -log -port=${port}`;
                     console.log("PORT",port)
                     exec(command, (error, stdout, stderr) => {
                         if (error) {
