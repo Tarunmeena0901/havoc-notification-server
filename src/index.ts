@@ -311,7 +311,7 @@ wss.on('connection', function connection(userSocket) {
                     const {Status, MatchId} = await getMatchmakingStatus(queueId, ticketId, entityTokenData.token);
                     if (Status === 'Matched') {
                         matchId = MatchId
-                        return;
+                        break;
                     } else {
                         await new Promise(resolve => setTimeout(resolve, 6500));
                     }
