@@ -299,12 +299,10 @@ export async function findFreePort(startPort = 7777) {
     });
 
     if (isFree) {
-      console.log("Found free port:", port);
       return port;
     }
 
     port++;
   }
-
   throw new Error("No free ports available.");
 }
