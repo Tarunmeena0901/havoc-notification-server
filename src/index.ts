@@ -328,7 +328,7 @@ wss.on('connection', function connection(userSocket) {
             if(finalMemberList){
                 try {
                     const port = await findFreePort();
-                    const command = `Panoverse.exe -server -log -port=${port}`; // Change server name
+                    const command = `../../WindowsServer/PanoverseServer.exe -server -log -port=${port}`; // Change server name
         
                     exec(command, (error, stdout, stderr) => {
                         if (error) {
