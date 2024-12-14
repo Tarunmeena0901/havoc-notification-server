@@ -4,6 +4,7 @@ import { cancelPlayerAllTickets, createMatchmakingTicket, findFreePort, getEntit
 import sql from "./sql/database";
 import { exec } from "child_process";
 import bcrypt from 'bcrypt';
+import path from 'path';
 
 
 type LobbyMembers = { [key: string]: string }
@@ -328,8 +329,13 @@ wss.on('connection', function connection(userSocket) {
             if(finalMemberList){
                 try {
                     const port = await findFreePort();
-                    const command = `./../../WindowsServer/PanoverseServer.exe -server -log -port=${port}`;
+
+                    const serverExecutable = path.resolve(__dirname, '../../WindowsServer/PanoverseServer.exe');
+
+                    const command = `"${serverExecutable}" -server -log -port=${port}`;
+
                     console.log("PORT",port)
+                    
                     exec(command, (error, stdout, stderr) => {
                         if (error) {
                             console.error("Failed to start server:", error);
