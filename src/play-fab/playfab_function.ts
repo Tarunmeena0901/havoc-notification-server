@@ -59,15 +59,15 @@ async function sendRequest(url: string, payload: any, entityToken?: string) {
 //   const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Client/LoginWithCustomID`, payload)
 // }
 
-export async function getEntityToken(){
+export async function getEntityToken() {
 
-  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Authentication/GetEntityToken`,{})
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Authentication/GetEntityToken`, {})
 
-  if(response.status === 'OK'){
+  if (response.status === 'OK') {
 
     return {
       success: true,
-      token : response.data?.EntityToken,
+      token: response.data?.EntityToken,
       message: ''
     }
   } else {
@@ -186,7 +186,9 @@ export async function removeFriend(PlayFabId: string, FriendPlayFabId: string) {
   }
 }
 
-export async function createMatchmakingTicket(playerId: string, queueId: string, members: PlayerInLobby[]) {
+
+
+export async function createMatchmakingTicket(queueId: string, members: PlayerInLobby[], entityToken: string) {
 
   const matchmakingPlayer = members.map((player) => {
     return {
@@ -203,7 +205,7 @@ export async function createMatchmakingTicket(playerId: string, queueId: string,
       },
       Entity: {
         Id: player.username,
-        Type: "title_player_account"
+        Type: "master_player_account"
       }
     }
   })
@@ -215,9 +217,35 @@ export async function createMatchmakingTicket(playerId: string, queueId: string,
   }
 
   // POST https://titleId.playfabapi.com/Match/GetMatch
-  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/CreateServerMatchmakingTicket`, payload, process.env.DUMMY_ENTITY_TOKEN);
-  const ticketId = response.TicketId;
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/CreateServerMatchmakingTicket`, payload, entityToken);
+  const ticketId = response.data.TicketId;
   return ticketId;
+}
+
+export async function cancelPlayerAllTickets(playerId: string, queueId: string, entityToken: string) {
+  const payload = {
+    QueueName: queueId,
+    Entity: {
+      Id: playerId,
+      Type: "master_player_account"
+    }
+  }
+
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/CancelAllMatchmakingTicketsForPlayer`, payload, entityToken);
+
+  if (response.status === 'OK') {
+    return {
+      success: true,
+      data: response.data?.id,
+      message: ''
+    }
+  } else {
+    return {
+      success: false,
+      data: null,
+      message: 'Error cancelling the user tickets'
+    }
+  }
 }
 
 export async function getMatchmakingStatus(queueId: string, ticketId: string, entityToken: string) {
@@ -228,7 +256,7 @@ export async function getMatchmakingStatus(queueId: string, ticketId: string, en
     TicketId: ticketId
   }
 
-  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatchmakingTicket`, payload, process.env.DUMMY_ENTITY_TOKEN);
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatchmakingTicket`, payload, entityToken);
   const { Status, MatchId } = response;
   return { Status, MatchId }
 }
@@ -242,7 +270,7 @@ export async function getMatchMembers(queueId: string, matchId: string, entityTo
     ReturnMemberAttributes: true
   }
 
-  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatch`, payload, process.env.DUMMY_ENTITY_TOKEN);
+  const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatch`, payload, entityToken);
   const members = response.Members;
   return members
 

@@ -1,6 +1,6 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { addUser, findPlayerById } from "./sql/sql_function";
-import { createMatchmakingTicket, findFreePort, getEntityToken, getMatchmakingStatus, getMatchMembers, removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
+import { cancelPlayerAllTickets, createMatchmakingTicket, findFreePort, getEntityToken, getMatchmakingStatus, getMatchMembers, removeFriend, setConfirmTags, twoWayAddFriend } from "./play-fab/playfab_function";
 import sql from "./sql/database";
 import { exec } from "child_process";
 import bcrypt from 'bcrypt';
@@ -301,7 +301,7 @@ wss.on('connection', function connection(userSocket) {
             const lobbyMembers = Array.from(playerLobby?.players.values())
             console.log("LOBBY ",  JSON.stringify(lobbyMembers,null,2))
 
-            const ticketId = await createMatchmakingTicket(from, queueId, lobbyMembers);
+            const ticketId = await createMatchmakingTicket(queueId, lobbyMembers, entityTokenData.token);
 
             console.log("TICKET ID ",  JSON.stringify(ticketId,null,2))
             let matchId = '';
@@ -677,7 +677,7 @@ wss.on('connection', function connection(userSocket) {
     })
     userSocket.send("you are connected to notification server please subscribe");
 
-    userSocket.on('close', () => {
+    userSocket.on('close', async () => {
         try {
             if (Object.keys(connectedUsers).length > 0) {
                 if (connectedUsers[id] && connectedUsers[id].username) {
