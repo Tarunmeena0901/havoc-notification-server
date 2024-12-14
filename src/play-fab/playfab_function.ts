@@ -257,7 +257,7 @@ export async function getMatchmakingStatus(queueId: string, ticketId: string, en
   }
 
   const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatchmakingTicket`, payload, entityToken);
-  const { Status, MatchId } = response;
+  const { Status, MatchId } = response.data;
   return { Status, MatchId }
 }
 
@@ -271,26 +271,35 @@ export async function getMatchMembers(queueId: string, matchId: string, entityTo
   }
 
   const response = await sendRequest(`https://${process.env.PLAYFAB_TITLE_ID}.playfabapi.com/Match/GetMatch`, payload, entityToken);
-  const members = response.Members;
+  const members = response.data.Members;
   return members
 
 }
 
-export async function findFreePort(startPort = 7777) {
 
+export async function findFreePort(startPort = 7777) {
   let port = startPort;
+  console.log("Starting port search...");
 
   while (port < 7810) {
     const isFree = await new Promise((resolve) => {
       const server = net.createServer();
-      server.once('error', () => resolve(false));
+
+      server.once('error', (err) => {
+        console.error(`Error on port ${port}:`, err);
+        resolve(false);
+      });
+
       server.once('listening', () => {
         server.close();
         resolve(true);
-      })
-    })
+      });
+
+      server.listen(port);
+    });
 
     if (isFree) {
+      console.log("Found free port:", port);
       return port;
     }
 
