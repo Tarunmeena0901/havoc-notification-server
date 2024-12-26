@@ -24,6 +24,12 @@ type UpdateLobbyData = {
     ping?: number
 }
 
+type LiveMatch= {
+    matchId : string,
+    queueType: string,
+    members: string[],
+}
+
 const MAX_COUNT = 99999;
 const MAX_LOBBY_SPOT = 9;
 
@@ -55,6 +61,8 @@ const serializedLobbies: {
         players: PlayerInLobby[]
     }
 } = {};
+
+const liveMatches: Map<string, LiveMatch> = new Map();
 
 //incase the server crash this fill bring all the lobbies and back
 //rebuildLobbies(lobbies);
@@ -326,7 +334,9 @@ wss.on('connection', function connection(userSocket) {
 
             console.log("MEMBERS ", JSON.stringify(finalMemberList, null, 2))
 
-            if (finalMemberList) {
+            const isMatchServerStarted = liveMatches.has(matchId);
+
+            if (finalMemberList && !isMatchServerStarted) {
                 try {
                     const port = await findFreePort();
 
@@ -340,6 +350,12 @@ wss.on('connection', function connection(userSocket) {
 
                     serverProcess.on('spawn', () => {
                         console.log("Server started successfully on port:", port);
+
+                        liveMatches.set(matchId, {
+                            matchId,
+                            members: finalMemberList,
+                            queueType: queueId
+                        })
 
                         // Notify connected users
                         Object.values(connectedUsers).forEach((player) => {
