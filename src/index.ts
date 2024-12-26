@@ -28,6 +28,7 @@ type LiveMatch= {
     matchId : string,
     queueType: string,
     members: string[],
+    port: number
 }
 
 const MAX_COUNT = 99999;
@@ -354,7 +355,8 @@ wss.on('connection', function connection(userSocket) {
                         liveMatches.set(matchId, {
                             matchId,
                             members: finalMemberList,
-                            queueType: queueId
+                            queueType: queueId,
+                            port
                         })
 
                         // Notify connected users
