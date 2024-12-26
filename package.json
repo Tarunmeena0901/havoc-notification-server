@@ -6,7 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -b",
     "dev": "tsc -b && node ./dist/index.js",
-    "start": "tsc -b && pm2 start havoc-server"
+    "start": "tsc -b && pm2 start ./dist/index.js --name havoc-server"
   },
   "keywords": [],
   "author": "",

@@ -281,7 +281,7 @@ export async function findFreePort(startPort = 7777) {
   let port = startPort;
   console.log("Starting port search...");
 
-  while (port < 7810) {
+  while (port < 7800) {
     const isFree = await new Promise((resolve) => {
       const server = net.createServer();
 
