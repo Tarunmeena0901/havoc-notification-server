@@ -352,6 +352,11 @@ wss.on('connection', function connection(userSocket) {
                     serverProcess.on('spawn', () => {
                         console.log("Server started successfully on port:", port);
 
+                        setTimeout(() => {
+                            serverProcess.kill();
+                            console.log(`Server on port ${port} killed after 15 minutes.`);
+                        }, 15 * 60 * 1000);
+                        
                         liveMatches.set(matchId, {
                             matchId,
                             members: finalMemberList,
@@ -375,6 +380,15 @@ wss.on('connection', function connection(userSocket) {
                             });
                         });
                     });
+
+                    serverProcess.on('exit', (code, signal) => {
+                        if (signal) {
+                            console.log(`Server on port ${port} terminated with signal: ${signal}`);
+                        } else {
+                            console.log(`Server on port ${port} exited with code: ${code}`);
+                        }
+                    });
+
                 } catch (err) {
                     console.error("Error finding free port:", err);
                 }
