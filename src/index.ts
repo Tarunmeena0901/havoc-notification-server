@@ -341,7 +341,15 @@ wss.on('connection', function connection(userSocket) {
                 try {
                     const port = await findFreePort();
 
-                    const serverExecutable = path.resolve(__dirname, '../../WindowsServer/PanoverseServer.exe');
+                    let exePath = '';
+
+                    if(queueId === 'ranked'){
+                        exePath = '../../WindowsServer/RankedPanoverseServer.exe'
+                    } else if (queueId === 'unranked'){
+                        exePath = '../../WindowsServer/UnrankedPanoverseServer.exe'
+                    }
+
+                    const serverExecutable = path.resolve(__dirname, exePath);
 
                     const command = `"${serverExecutable}" -server -log -port=${port}`;
 
